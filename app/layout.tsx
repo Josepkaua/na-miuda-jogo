@@ -3,9 +3,6 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://impostor-distante.kauapraseres56.chatgpt.site"),
-  other: {
-    "codex-preview": "development",
-  },
   title: "Na Miúda! — Jogo do Impostor",
   description:
     "Crie uma sala, chame os amigos e descubra quem está improvisando. Um jogo de dedução social brasileiro para jogar à distância.",
