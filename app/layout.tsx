@@ -1,0 +1,50 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://impostor-distante.kauapraseres56.chatgpt.site"),
+  other: {
+    "codex-preview": "development",
+  },
+  title: "Na Miúda! — Jogo do Impostor",
+  description:
+    "Crie uma sala, chame os amigos e descubra quem está improvisando. Um jogo de dedução social brasileiro para jogar à distância.",
+  icons: {
+    icon: "/mascote-na-miuda.png",
+    shortcut: "/mascote-na-miuda.png",
+  },
+  openGraph: {
+    title: "Na Miúda! — Todo mundo sabe. Menos um.",
+    description:
+      "O jogo do impostor online para jogar com os amigos, onde cada um estiver.",
+    type: "website",
+    locale: "pt_BR",
+    images: [
+      {
+        url: "/og.png",
+        width: 1536,
+        height: 1024,
+        alt: "Na Miúda! — Todo mundo sabe. Menos um.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Na Miúda! — Todo mundo sabe. Menos um.",
+    description:
+      "O jogo do impostor online para jogar com os amigos, onde cada um estiver.",
+    images: ["/og.png"],
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body>{children}</body>
+    </html>
+  );
+}
