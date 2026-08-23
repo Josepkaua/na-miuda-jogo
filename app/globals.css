@@ -69,7 +69,11 @@ button { color: inherit; }
 .theme-switch select { width: 76px; padding: 0; border: 0; background: transparent; color: var(--ink); font-size: 10px; font-weight: 800; outline: none; }
 
 .landing-wrap { width: min(1180px, 100%); margin: 0 auto; padding: 42px 0 70px; display: grid; grid-template-columns: 1.02fr .98fr; column-gap: 7vw; align-items: center; }
-.hero-copy { padding: 28px 0; }
+.hero-copy { padding: 28px 0; position: relative; }
+.hero-mascot { position: absolute; width: 218px; height: 218px; right: -10px; top: -184px; z-index: 0; isolation: isolate; background: url("/mascote-na-miuda.png") center / contain no-repeat; filter: drop-shadow(0 24px 30px rgba(6,44,50,.22)); animation: mascot-float 5s ease-in-out infinite; }
+.hero-mascot::before { content: ""; position: absolute; inset: 27px; z-index: -1; border-radius: 50%; background: color-mix(in srgb, var(--lime) 28%, transparent); box-shadow: 0 0 0 18px color-mix(in srgb, var(--lime) 7%, transparent); }
+.hero-mascot > span { position: absolute; right: 17px; bottom: 31px; width: 42px; height: 42px; display: grid; place-items: center; border: 3px solid var(--cream); border-radius: 14px; background: var(--lime); color: #073d45; font-size: 22px; font-weight: 1000; transform: rotate(8deg); box-shadow: 0 10px 22px rgba(6,44,50,.18); }
+@keyframes mascot-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-9px) rotate(2deg); } }
 .eyebrow, .micro-label { text-transform: uppercase; letter-spacing: .13em; font-size: 11px; font-weight: 900; }
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; background: color-mix(in srgb, var(--paper) 75%, transparent); }
 .eyebrow b { color: #8eb71d; font-size: 9px; }
@@ -78,6 +82,10 @@ button { color: inherit; }
 .hero-copy h1 em::after { content: ""; position: absolute; left: 0; right: 0; bottom: -7px; height: 11px; background: var(--lime); border-radius: 50%; z-index: -1; transform: rotate(-1.5deg); }
 .hero-copy > p { max-width: 610px; margin: 0; font-size: 18px; line-height: 1.65; color: var(--muted); }
 .proof-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 29px; font-size: 12px; color: var(--muted); font-weight: 800; }
+.category-preview { display: flex; align-items: center; gap: 7px; margin-top: 21px; }
+.category-preview > span { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--paper) 78%, transparent); box-shadow: 0 6px 18px rgba(6,44,50,.06); font-size: 16px; transform: rotate(-3deg); }
+.category-preview > span:nth-child(even) { transform: rotate(4deg) translateY(2px); }
+.category-preview b { margin-left: 4px; color: var(--muted); font-size: 10px; letter-spacing: .03em; }
 
 .entry-card, .panel { background: color-mix(in srgb, var(--paper) 95%, transparent); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .entry-card { border-radius: 28px; padding: 29px; position: relative; }
@@ -249,8 +257,11 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .app-shell { padding: 0 22px; }
   .landing-wrap { grid-template-columns: 1fr; padding-top: 12px; }
   .hero-copy { text-align: center; }
+  .hero-mascot { position: relative; inset: auto; width: 150px; height: 150px; margin: -10px auto 2px; z-index: 0; }
+  .hero-mascot > span { right: 6px; bottom: 17px; width: 34px; height: 34px; border-radius: 11px; font-size: 18px; }
   .hero-copy > p { margin-inline: auto; }
   .proof-row { justify-content: center; }
+  .category-preview { justify-content: center; }
   .entry-card { width: min(560px, 100%); margin: 25px auto 0; }
   .how-it-works { margin-top: 48px; }
   .game-grid { grid-template-columns: 1fr; }
@@ -266,8 +277,12 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .rules-button, .theme-switch select { display: none; }
   .theme-switch { width: 39px; justify-content: center; padding: 0; }
   .hero-copy h1 { font-size: 50px; }
+  .hero-mascot { width: 112px; height: 112px; margin-top: 0; }
+  .hero-mascot > span { width: 29px; height: 29px; bottom: 10px; font-size: 15px; border-width: 2px; }
   .hero-copy > p { font-size: 15px; }
   .proof-row { gap: 8px; font-size: 10px; }
+  .category-preview > span { width: 31px; height: 31px; }
+  .category-preview b { display: none; }
   .entry-card { padding: 22px; border-radius: 22px; }
   .quick-settings { grid-template-columns: 1fr 1fr; }
   .quick-settings label:first-child { grid-column: 1 / -1; }

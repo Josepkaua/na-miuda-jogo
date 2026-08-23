@@ -361,10 +361,12 @@ export default function Home() {
       {!snapshot ? (
         <div className="landing-wrap">
           <section className="hero-copy">
+            <div className="hero-mascot" aria-hidden="true"><span>?</span></div>
             <span className="eyebrow"><b>●</b> Feito para jogar de qualquer lugar</span>
             <h1>Todo mundo sabe.<br /><em>Menos um.</em></h1>
             <p>Crie uma sala, chame os amigos para a ligação e descubra quem está improvisando. Sem instalar nada.</p>
             <div className="proof-row"><span>3–20 jogadores</span><span>•</span><span>1–5 impostores</span><span>•</span><span>Feito em PT-BR</span></div>
+            <div className="category-preview" aria-hidden="true"><span>🌎</span><span>🍕</span><span>⚽</span><span>🎬</span><span>🎮</span><b>+ muitos temas</b></div>
           </section>
 
           <section className="entry-card" aria-label="Criar ou entrar em sala">
