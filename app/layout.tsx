@@ -6,11 +6,13 @@ import "./game-polish.css";
 import "./automatic-flow.css";
 import "./connection-status.css";
 import "./game-hud-refinement.css";
+import "./chat-focus-presence.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
 import ConnectionStatus from "./connection-status";
 import ChatEmojiPicker from "./chat-emoji-picker";
+import ChatFocusPresence from "./chat-focus-presence";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -65,6 +67,7 @@ export default function RootLayout({
         <GameMotionController />
         <GamePhaseGuard />
         <ChatEmojiPicker />
+        <ChatFocusPresence />
       </body>
     </html>
   );
