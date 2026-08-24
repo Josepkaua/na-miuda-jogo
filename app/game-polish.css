@@ -1,0 +1,255 @@
+/* Microinterações mecânicas: movimento deve explicar estado, não competir com o jogo. */
+
+.cinematic-transition {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: default;
+}
+
+/* A barra de fases funciona como HUD: a etapa atual respira e as anteriores ficam estáveis. */
+.phase-step {
+  transition: color .18s ease, background .18s ease, transform .18s ease, opacity .18s ease;
+}
+.phase-step.active {
+  position: relative;
+  z-index: 1;
+  transform: translateY(-1px);
+}
+.phase-step.active > span {
+  animation: active-phase-pulse 1.9s ease-in-out infinite;
+}
+.phase-step.done > span,
+.phase-step.completed > span {
+  animation: phase-done-pop .32s cubic-bezier(.18,.88,.24,1.2) both;
+}
+
+/* Sala e conexão. */
+.room-live i,
+.chat-live i {
+  animation: live-dot 2s ease-in-out infinite;
+}
+.ready-bar {
+  overflow: hidden;
+}
+.ready-bar i {
+  position: relative;
+  transition: width .42s cubic-bezier(.2,.78,.24,1);
+}
+.ready-bar i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+  transform: translateX(-120%);
+  animation: ready-shine 1.7s ease-in-out infinite;
+}
+.ready-button {
+  transition: transform .16s ease, box-shadow .16s ease, background .2s ease, color .2s ease;
+}
+.ready-button.active {
+  animation: ready-confirm .38s cubic-bezier(.16,.9,.24,1.25) both;
+}
+
+/* Botões dão resposta física curta; sem animação longa em ações frequentes. */
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled),
+.ghost-button:active:not(:disabled),
+.ready-button:active:not(:disabled),
+.vote-card:active:not(:disabled),
+.decision-options button:active:not(:disabled) {
+  transform: translateY(1px) scale(.985);
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--lime) 46%, transparent);
+  outline-offset: 3px;
+}
+
+/* Ao entrar em decisão, o conteúdo surge como uma nova etapa da discussão. */
+.discussion-decision {
+  animation: decision-enter .34s cubic-bezier(.18,.84,.24,1.08) both;
+}
+.timer-ring {
+  transform-origin: center;
+}
+.game-grid.phase-discussion .timer-ring:not(.expired) {
+  animation: timer-enter .38s cubic-bezier(.18,.88,.24,1.18) both;
+}
+.timer-ring.expired {
+  animation: timer-expired .42s ease-out both;
+}
+
+/* Mensagens: destaque curto para a mais nova sem prejudicar leitura. */
+.chat-messages .chat-message:last-child p {
+  animation: newest-message-highlight .55s ease-out both;
+}
+.new-messages-button {
+  animation: unread-bob 1.4s ease-in-out infinite;
+}
+
+/* Voto confirmado deve parecer encerrado, não só desabilitado. */
+.game-grid.phase-voting .vote-card:disabled {
+  transition: opacity .22s ease, filter .22s ease, transform .22s ease;
+}
+.game-grid.phase-voting .vote-card.selected:disabled {
+  opacity: 1;
+  filter: none;
+}
+.game-grid.phase-voting .vote-card:not(.selected):disabled {
+  opacity: .52;
+  filter: saturate(.65);
+}
+.game-grid.phase-voting.is-time-warning .vote-progress {
+  border-color: color-mix(in srgb, #ffb25e 55%, var(--line));
+}
+.game-grid.phase-voting.is-time-critical .vote-copy {
+  color: color-mix(in srgb, var(--danger) 78%, var(--ink));
+}
+
+/* Resultado: palavra e impostor são a evidência principal. */
+.result-evidence {
+  perspective: 800px;
+}
+.impostor-reveal-card,
+.secret-reveal {
+  transform-origin: center;
+}
+.results-content.result-group-win .impostor-reveal-card,
+.results-content.result-impostor-win .impostor-reveal-card {
+  animation: evidence-card-in .48s cubic-bezier(.17,.86,.24,1.12) .08s both;
+}
+.results-content.result-group-win .secret-reveal,
+.results-content.result-impostor-win .secret-reveal {
+  animation: evidence-card-in .48s cubic-bezier(.17,.86,.24,1.12) .16s both;
+}
+.secret-reveal > strong {
+  display: inline-block;
+  animation: secret-word-pop .48s cubic-bezier(.16,.9,.24,1.2) .25s both;
+}
+.points-note {
+  transition: border-color .2s ease, background .2s ease;
+}
+
+/* Placar: alterações são percebidas imediatamente. */
+.player-row.leader {
+  position: relative;
+}
+.player-row.leader::before {
+  content: "";
+  position: absolute;
+  inset: 2px 0;
+  z-index: -1;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lime) 7%, transparent);
+  opacity: .8;
+}
+.player-row:not(.leader) .player-score {
+  transition: transform .18s ease;
+}
+
+/* Entrada das telas menores da partida, por baixo das transições maiores. */
+.game-grid.phase-lobby .lobby-intro,
+.game-grid.phase-lobby .settings-card,
+.game-grid.phase-lobby .ready-box,
+.game-grid.phase-reveal .centered-phase > .micro-label,
+.game-grid.phase-voting .vote-grid,
+.game-grid.phase-voting .vote-actions,
+.game-grid.phase-voting .vote-progress {
+  animation: mechanic-block-enter .34s cubic-bezier(.2,.8,.24,1) both;
+}
+.game-grid.phase-lobby .settings-card { animation-delay: .05s; }
+.game-grid.phase-lobby .ready-box { animation-delay: .10s; }
+.game-grid.phase-voting .vote-grid { animation-delay: .05s; }
+.game-grid.phase-voting .vote-actions { animation-delay: .10s; }
+.game-grid.phase-voting .vote-progress { animation-delay: .15s; }
+
+@keyframes active-phase-pulse {
+  0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--lime) 26%, transparent); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+@keyframes phase-done-pop {
+  0% { transform: scale(.78); }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@keyframes live-dot {
+  0%,100% { opacity: .7; box-shadow: 0 0 0 0 rgba(102,189,120,.24); }
+  50% { opacity: 1; box-shadow: 0 0 0 5px rgba(102,189,120,0); }
+}
+@keyframes ready-shine {
+  0%,28% { transform: translateX(-120%); }
+  70%,100% { transform: translateX(120%); }
+}
+@keyframes ready-confirm {
+  0% { transform: scale(.96); }
+  60% { transform: scale(1.025); }
+  100% { transform: scale(1); }
+}
+@keyframes decision-enter {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes timer-enter {
+  from { opacity: 0; transform: scale(.82) rotate(-5deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes timer-expired {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.06); }
+  100% { transform: scale(1); opacity: .78; }
+}
+@keyframes newest-message-highlight {
+  from { box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--lime) 10%, transparent); }
+  to { box-shadow: inset 0 0 0 999px transparent; }
+}
+@keyframes unread-bob {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes evidence-card-in {
+  from { opacity: 0; transform: rotateX(7deg) translateY(10px) scale(.98); }
+  to { opacity: 1; transform: rotateX(0) translateY(0) scale(1); }
+}
+@keyframes secret-word-pop {
+  from { opacity: 0; transform: scale(.86); filter: blur(5px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+@keyframes mechanic-block-enter {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .player-row:hover,
+  .vote-card:hover:not(:disabled),
+  .decision-options button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-step.active > span,
+  .phase-step.done > span,
+  .phase-step.completed > span,
+  .room-live i,
+  .chat-live i,
+  .ready-bar i::after,
+  .ready-button.active,
+  .discussion-decision,
+  .game-grid.phase-discussion .timer-ring,
+  .chat-messages .chat-message:last-child p,
+  .new-messages-button,
+  .results-content .impostor-reveal-card,
+  .results-content .secret-reveal,
+  .secret-reveal > strong,
+  .game-grid.phase-lobby .lobby-intro,
+  .game-grid.phase-lobby .settings-card,
+  .game-grid.phase-lobby .ready-box,
+  .game-grid.phase-reveal .centered-phase > .micro-label,
+  .game-grid.phase-voting .vote-grid,
+  .game-grid.phase-voting .vote-actions,
+  .game-grid.phase-voting .vote-progress {
+    animation: none !important;
+  }
+}
