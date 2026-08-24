@@ -35,6 +35,13 @@ function findRevealButton() {
     .find((button) => /revelar resultado/i.test(button.textContent ?? "")) ?? null;
 }
 
+function syncPointsLegend() {
+  const note = document.querySelector<HTMLElement>(".game-grid.phase-results .points-note");
+  if (!note) return;
+  const text = "Pontuação: impostor vencedor +3 • equipe vencedora +2 • acertou um impostor no voto +1";
+  if (note.textContent !== text) note.textContent = text;
+}
+
 export default function GamePhaseGuard() {
   const [transitionMessage, setTransitionMessage] = useState("");
   const lastGameState = useRef<{ key: string; phase: string } | null>(null);
@@ -122,6 +129,8 @@ export default function GamePhaseGuard() {
             revealButton.click();
           }, 120);
         }
+      } else if (current.phase === "results") {
+        syncPointsLegend();
       }
     };
 
