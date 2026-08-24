@@ -120,17 +120,16 @@ await expectRpcFailure(
   { p_code: code, p_session_token: tokens[0] },
   "The obsolete two-argument phase transition is still callable.",
 );
-let turnSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[0] });
-while (turnSnapshot.discussion_stage === "turns") {
-  await rpc("advance_discussion_turn", {
-    p_code: code,
-    p_session_token: tokens[0],
-    p_expected_round: 1,
-    p_expected_turn: turnSnapshot.discussion_turn_order,
-  });
-  turnSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[0] });
-}
-if (turnSnapshot.discussion_stage !== "decision" || turnSnapshot.discussion_turn_player_id !== null) throw new Error("Discussion turn flow did not open the group decision.");
+const freeChatSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[0] });
+if (freeChatSnapshot.discussion_stage !== "free_chat" || freeChatSnapshot.discussion_turn_player_id !== null) throw new Error("Discussion did not start with free chat.");
+await expectRpcFailure(
+  "open_discussion_decision",
+  { p_code: code, p_session_token: tokens[1], p_expected_round: 1 },
+  "A non-host player ended the free discussion.",
+);
+await rpc("open_discussion_decision", { p_code: code, p_session_token: tokens[0], p_expected_round: 1 });
+const decisionSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[0] });
+if (decisionSnapshot.discussion_stage !== "decision" || decisionSnapshot.discussion_turn_player_id !== null) throw new Error("Free chat did not open the group decision.");
 await expectRpcFailure(
   "send_chat_message",
   { p_code: code, p_session_token: tokens[0], p_body: "Mensagem durante a decisão." },

@@ -124,7 +124,7 @@ function normalizeSnapshot(value: Record<string, unknown>): Snapshot {
     eligibleVoterCount: Number(value.eligible_voter_count ?? players.length),
     rolesSeenCount: Number(value.roles_seen_count ?? 0),
     roundPlayerCount: Number(value.round_player_count ?? players.length),
-    discussionStage: (value.discussion_stage as DiscussionStage) ?? "turns",
+    discussionStage: (value.discussion_stage as DiscussionStage) ?? "free_chat",
     discussionTurnOrder: value.discussion_turn_order === null || value.discussion_turn_order === undefined ? null : Number(value.discussion_turn_order),
     discussionTurnPlayerId: value.discussion_turn_player_id ? String(value.discussion_turn_player_id) : null,
     discussionVoteCount: Number(value.discussion_vote_count ?? 0),
@@ -169,7 +169,7 @@ function makeDemoSnapshot(nickname: string, limit: number, category: string, sec
     roomId: "demo-room", code: "JOGAR", phase: "lobby", category,
     playerLimit: limit, impostorCount: Math.min(impostors, Math.max(1, total - 2)),
     discussionSeconds: seconds, roundNumber: 0, phaseEndsAt: null, serverNow: null, voteCount: 0, hasVoted: false, eligibleVoterCount: players.length, rolesSeenCount: 0, roundPlayerCount: players.length,
-    discussionStage: "turns", discussionTurnOrder: 1, discussionTurnPlayerId: players[0].id, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null,
+    discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null,
     revealedWord: null, eliminatedPlayerIds: [], impostorPlayerIds: [], winner: null, players,
   };
 }
@@ -505,7 +505,7 @@ export default function Home() {
       const meIsImpostor = impostors.includes(me?.id ?? "");
       setRoleInfo({ role: meIsImpostor ? "impostor" : "player", word: meIsImpostor ? null : "Coxinha", category: "comidas", hint: meIsImpostor ? "É algo associado a lanches, festas e momentos descontraídos." : null, roomId: snapshot.roomId, roundNumber: snapshot.roundNumber + 1 });
       setRoleVisible(false);
-      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length, roundPlayerCount: snapshot.players.length, discussionStage: "turns", discussionTurnOrder: 1, discussionTurnPlayerId: snapshot.players[0]?.id ?? null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
+      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
       return;
     }
     setRoleInfo(null); setRoleVisible(false); await callAction("start_round");
@@ -541,28 +541,12 @@ export default function Home() {
     if (succeeded) setNotice("Voto confirmado e mantido em segredo.");
   }
 
-  async function advanceDiscussionTurn() {
-    if (!snapshot || snapshot.phase !== "discussion" || snapshot.discussionStage !== "turns") return;
-    if (demoMode) {
-      const currentIndex = snapshot.players.findIndex((player) => player.id === snapshot.discussionTurnPlayerId);
-      const nextPlayer = snapshot.players.slice(currentIndex + 1).find((player) => player.isOnline);
-      setSnapshot({
-        ...snapshot,
-        discussionStage: nextPlayer ? "turns" : "decision",
-        discussionTurnOrder: nextPlayer ? currentIndex + 2 : null,
-        discussionTurnPlayerId: nextPlayer?.id ?? null,
-        phaseEndsAt: nextPlayer ? snapshot.phaseEndsAt : null,
-      });
-      return;
-    }
-    await callAction("advance_discussion_turn", {
-      p_expected_round: snapshot.roundNumber,
-      p_expected_turn: snapshot.discussionTurnOrder,
-    });
-  }
-
   async function castDiscussionChoice(choice: DiscussionChoice) {
-    if (!snapshot || snapshot.phase !== "discussion" || snapshot.discussionStage !== "decision" || snapshot.hasDiscussionVoted) return;
+    const initialDiscussionEnded = snapshot?.phase === "discussion"
+      && (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns")
+      && snapshot.discussionVoteCount === 0
+      && secondsLeft === 0;
+    if (!snapshot || snapshot.phase !== "discussion" || snapshot.discussionStage !== "decision" && !initialDiscussionEnded || snapshot.hasDiscussionVoted) return;
     if (demoMode) {
       const majority = Math.floor(snapshot.eligibleVoterCount / 2) + 1;
       if (choice === "more_time") {
@@ -573,6 +557,15 @@ export default function Home() {
       return;
     }
     await callAction("cast_discussion_choice", { p_choice: choice, p_expected_round: snapshot.roundNumber });
+  }
+
+  async function openDiscussionDecision() {
+    if (!snapshot || snapshot.phase !== "discussion" || !["turns", "free_chat"].includes(snapshot.discussionStage) || snapshot.discussionVoteCount > 0) return;
+    if (demoMode) {
+      setSnapshot({ ...snapshot, discussionStage: "decision", discussionTurnOrder: null, discussionTurnPlayerId: null, phaseEndsAt: null });
+      return;
+    }
+    await callAction("open_discussion_decision", { p_expected_round: snapshot.roundNumber });
   }
 
   async function toggleRoleCard() {
@@ -745,7 +738,7 @@ export default function Home() {
                   {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas →</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
                 </section>
               )}
-              {snapshot.phase === "discussion" && <DiscussionSide snapshot={snapshot} secondsLeft={secondsLeft} currentRoleInfo={currentRoleInfo} roleCategoryLabel={roleCategory.label} roleVisible={roleVisible} onToggleRole={() => setRoleVisible((value) => !value)} isHost={isHost} busy={busy} onOpenVoting={advancePhase} />}
+              {snapshot.phase === "discussion" && <DiscussionSide snapshot={snapshot} secondsLeft={secondsLeft} currentRoleInfo={currentRoleInfo} roleCategoryLabel={roleCategory.label} roleVisible={roleVisible} onToggleRole={() => setRoleVisible((value) => !value)} isHost={isHost} busy={busy} onOpenDecision={openDiscussionDecision} onOpenVoting={advancePhase} />}
               {snapshot.phase === "voting" && (
                 <section className="phase-content"><span className="micro-label">Escolha sem contar</span><h3>Quem está na miúda?</h3><p className="phase-description vote-copy">Seu voto é secreto e não pode ser trocado depois da confirmação.</p><div className="vote-grid">{snapshot.players.filter((player) => !player.isMe).map((player) => <button key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-pressed={selectedVote === player.id} onClick={() => setSelectedVote(player.id)}><Avatar name={player.nickname} /><span>{player.nickname}</span><i>{selectedVote === player.id ? "✓" : ""}</i></button>)}</div><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy || snapshot.hasVoted} onClick={castVote}>{snapshot.hasVoted ? "Voto confirmado ✓" : "Confirmar meu voto"}</button>{isHost && <button className="ghost-button" disabled={busy || snapshot.voteCount < snapshot.eligibleVoterCount && secondsLeft !== 0 && !demoMode} onClick={advancePhase}>Revelar resultado</button>}</div><p className="vote-progress">{snapshot.voteCount} de {snapshot.eligibleVoterCount} votos confirmados{secondsLeft !== null ? ` • encerra em ${formatTime(secondsLeft)}` : ""}</p></section>
               )}
@@ -766,7 +759,7 @@ export default function Home() {
               onSend={sendChatMessage}
               onScroll={handleChatScroll}
               onJumpToLatest={jumpToLatestChat}
-              onAdvanceTurn={advanceDiscussionTurn}
+              secondsLeft={secondsLeft}
               onDiscussionChoice={castDiscussionChoice}
             />
           </div>
@@ -800,7 +793,7 @@ function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: 
   </div>;
 }
 
-function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLabel, roleVisible, onToggleRole, isHost, busy, onOpenVoting }: {
+function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLabel, roleVisible, onToggleRole, isHost, busy, onOpenDecision, onOpenVoting }: {
   snapshot: Snapshot;
   secondsLeft: number | null;
   currentRoleInfo: RoleInfo | null;
@@ -809,18 +802,22 @@ function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLa
   onToggleRole: () => void;
   isHost: boolean;
   busy: boolean;
+  onOpenDecision: () => void;
   onOpenVoting: () => void;
 }) {
-  const extraTime = snapshot.discussionStage === "free_chat";
-  const deciding = snapshot.discussionStage === "decision";
+  const extraTime = snapshot.discussionMoreTimeCount > 0;
+  const deciding = snapshot.discussionStage === "decision"
+    || (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns") && snapshot.discussionVoteCount === 0 && secondsLeft === 0;
   return <section className="phase-content centered-phase discussion-side">
-    {deciding ? <div className="phase-icon decision-icon">⚖️</div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : secondsLeft === 0 ? "tempo encerrado" : "para as pistas"}</span></div>}
-    <span className="micro-label">{deciding ? "Decisão da turma" : extraTime ? "Conversa liberada" : "Uma pergunta por pessoa"}</span>
-    <h3>{deciding ? "Votem no chat" : extraTime ? "Agora é debate livre" : "A vez aparece no chat"}</h3>
-    <p className="phase-description">{deciding ? "O chat fica pausado por alguns segundos enquanto todos escolhem o próximo passo." : extraTime ? "Usem este minuto para comparar respostas e encontrar contradições." : "Cada pessoa faz uma pergunta ou dá uma pista. Ao terminar, passa a vez para a próxima."}</p>
+    {deciding ? <div className="phase-icon decision-icon">⚖️</div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
+    <span className="micro-label">{deciding ? "Decisão da turma" : extraTime ? "Tempo extra" : "Discussão aberta"}</span>
+    <h3>{deciding ? "Votem no chat" : "Conversem livremente"}</h3>
+    <p className="phase-description">{deciding ? "O chat fica pausado por alguns segundos enquanto todos escolhem o próximo passo." : extraTime ? "Usem este minuto para comparar respostas e encontrar contradições." : "Façam perguntas, deem pistas e organizem a conversa do jeito que funcionar melhor para a turma."}</p>
     <div className={`tip-box ${currentRoleInfo?.role === "impostor" ? "impostor-tip" : ""}`}><span>{currentRoleInfo?.role === "impostor" ? "🎭" : "💡"}</span><p><strong>{currentRoleInfo?.role === "impostor" ? "Sua dica de blefe" : "Dica rápida"}</strong>{currentRoleInfo?.role === "impostor" ? currentRoleInfo.hint ?? "Escute as palavras que mais se repetem e responda de forma ampla." : "Uma boa pergunta testa quem conhece a palavra sem entregá-la ao impostor."}</p></div>
     <div className="secret-recheck"><button className="ghost-button" disabled={!currentRoleInfo} onClick={onToggleRole}>{roleVisible ? "Ocultar meu segredo" : "Rever meu segredo"}</button>{roleVisible && currentRoleInfo && <div><small>{currentRoleInfo.role === "impostor" ? `Impostor • ${roleCategoryLabel}` : "Sua palavra"}</small><strong>{currentRoleInfo.role === "impostor" ? "IMPOSTOR" : currentRoleInfo.word}</strong>{currentRoleInfo.role === "impostor" && currentRoleInfo.hint && <p>{currentRoleInfo.hint}</p>}</div>}</div>
-    {extraTime && (isHost ? <button className="primary-button phase-action" disabled={busy} onClick={onOpenVoting}>Encerrar conversa e votar →</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>)}
+    {!deciding && (extraTime
+      ? isHost ? <button className="primary-button phase-action" disabled={busy} onClick={onOpenVoting}>Encerrar conversa e votar →</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>
+      : isHost && <button className="ghost-button discussion-decision-trigger" disabled={busy} onClick={onOpenDecision}>Encerrar conversa e decidir →</button>)}
   </section>;
 }
 
@@ -833,11 +830,11 @@ function ChatPanel({
   loading,
   unread,
   listRef,
+  secondsLeft,
   onDraftChange,
   onSend,
   onScroll,
   onJumpToLatest,
-  onAdvanceTurn,
   onDiscussionChoice,
 }: {
   snapshot: Snapshot;
@@ -848,24 +845,25 @@ function ChatPanel({
   loading: boolean;
   unread: number;
   listRef: RefObject<HTMLDivElement | null>;
+  secondsLeft: number | null;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onScroll: () => void;
   onJumpToLatest: () => void;
-  onAdvanceTurn: () => void;
   onDiscussionChoice: (choice: DiscussionChoice) => void;
 }) {
   const phase = snapshot.phase;
-  const deciding = phase === "discussion" && snapshot.discussionStage === "decision";
+  const initialDiscussionEnded = phase === "discussion"
+    && (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns")
+    && snapshot.discussionVoteCount === 0
+    && secondsLeft === 0;
+  const deciding = phase === "discussion" && (snapshot.discussionStage === "decision" || initialDiscussionEnded);
   const paused = phase === "reveal" || deciding;
-  const currentSpeaker = snapshot.players.find((player) => player.id === snapshot.discussionTurnPlayerId);
-  const currentSpeakerIndex = Math.max(0, snapshot.players.findIndex((player) => player.id === snapshot.discussionTurnPlayerId));
-  const canAdvanceTurn = Boolean(currentSpeaker?.isMe || snapshot.players.some((player) => player.isMe && player.isHost));
   const voteProgress = snapshot.eligibleVoterCount ? Math.min(100, snapshot.discussionVoteCount / snapshot.eligibleVoterCount * 100) : 0;
   const phaseHint = paused
     ? deciding ? "Chat pausado durante a decisão do grupo" : "Chat pausado enquanto todos veem o papel"
     : phase === "discussion"
-      ? snapshot.discussionStage === "free_chat" ? "Tempo extra — conversem livremente" : "Faça perguntas sem escrever a palavra secreta"
+      ? snapshot.discussionMoreTimeCount > 0 ? "Tempo extra — conversem livremente" : "Chat livre — perguntem e respondam sem escrever a palavra secreta"
       : phase === "voting"
         ? "Votação aberta — não revele seu voto"
         : phase === "results"
@@ -878,13 +876,7 @@ function ChatPanel({
       <span className="chat-live"><i /> ao vivo</span>
     </div>
     <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span>{paused ? "🔒" : "💬"}</span>{phaseHint}</div>
-    {phase === "discussion" && snapshot.discussionStage === "turns" && <div className={`turn-banner ${currentSpeaker?.isMe ? "my-turn" : ""}`}>
-      <div className="turn-orbit"><Avatar name={currentSpeaker?.nickname ?? "?"} /><i /></div>
-      <div className="turn-copy"><small>Vez {currentSpeakerIndex + 1} de {snapshot.roundPlayerCount || snapshot.players.length}</small><strong>{currentSpeaker?.isMe ? "Sua vez de perguntar!" : `${currentSpeaker?.nickname ?? "A próxima pessoa"} pergunta agora`}</strong><span>{currentSpeaker?.isMe ? "Faça sua pergunta e passe a vez." : "Responda sem entregar a palavra."}</span></div>
-      {canAdvanceTurn && <button type="button" disabled={actionBusy} onClick={onAdvanceTurn}>{currentSpeaker?.isMe ? "Terminei →" : "Passar vez →"}</button>}
-      <div className="turn-progress" aria-hidden="true"><i style={{ width: `${Math.min(100, (currentSpeakerIndex + 1) / Math.max(1, snapshot.roundPlayerCount) * 100)}%` }} /></div>
-    </div>}
-    {phase === "discussion" && snapshot.discussionStage === "free_chat" && <div className="extra-time-banner"><span>＋1:00</span><div><strong>Tempo extra liberado</strong><small>O chat voltou — comparem as respostas.</small></div></div>}
+    {phase === "discussion" && snapshot.discussionMoreTimeCount > 0 && !deciding && <div className="extra-time-banner"><span>＋1:00</span><div><strong>Tempo extra liberado</strong><small>O chat voltou — comparem as respostas.</small></div></div>}
     {deciding ? <div className="discussion-decision" role="group" aria-labelledby="discussion-question">
       <div className="decision-symbol" aria-hidden="true">?</div>
       <span className="micro-label">Todo mundo escolhe</span>

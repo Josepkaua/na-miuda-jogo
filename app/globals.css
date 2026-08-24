@@ -203,6 +203,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .chat-focus .secret-recheck { width: 100%; }
 .chat-focus .phase-action { margin-top: 16px; }
 .chat-focus .waiting-copy { margin-top: 16px; font-size: 11px; }
+.discussion-decision-trigger { width: min(300px, 100%); margin-top: 16px; padding: 11px 14px; }
 .phase-content { height: 100%; animation: phase-arrive .42s cubic-bezier(.2,.82,.25,1) both; }
 @keyframes phase-arrive { from { opacity: 0; transform: translateY(12px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .phase-content h3 { margin: 8px 0 10px; font-size: clamp(30px, 4vw, 45px); line-height: 1; letter-spacing: -.055em; }
