@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
 
 type ThemeMode = "system" | "light" | "dark";
@@ -462,7 +461,7 @@ export default function Home() {
     <main className="app-shell">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
-        <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><Image src="/mascote-na-miuda.png" width={52} height={52} priority alt="" /><span>Na Miúda!</span></button>
+        <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><span className="brand-logo" aria-hidden="true" /><span>Na Miúda!</span></button>
         <div className="topbar-actions">
           <button className="rules-button" onClick={() => setShowRules(true)}>Como jogar</button>
           <ThemeSwitch value={theme} onChange={(value) => { setTheme(value); void updateProfile({ preferred_theme: value }); }} />
