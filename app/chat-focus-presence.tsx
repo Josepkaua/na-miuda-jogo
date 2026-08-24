@@ -10,6 +10,11 @@ type TypingEntry = {
   timer: ReturnType<typeof setTimeout>;
 };
 
+type TypingState = {
+  roomCode: string;
+  names: string[];
+};
+
 function getComposer() {
   if (typeof document === "undefined") return null;
   return document.querySelector<HTMLFormElement>(".chat-composer");
@@ -55,7 +60,7 @@ export default function ChatFocusPresence() {
   const composer = useSyncExternalStore(subscribeDom, getComposer, () => null);
   const chatPanel = useSyncExternalStore(subscribeDom, getChatPanel, () => null);
   const roomCode = useSyncExternalStore(subscribeDom, getRoomCode, () => "");
-  const [typingNames, setTypingNames] = useState<string[]>([]);
+  const [typingState, setTypingState] = useState<TypingState>({ roomCode: "", names: [] });
   const clientId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -124,9 +129,13 @@ export default function ChatFocusPresence() {
     const typing = new Map<string, TypingEntry>();
     let channel: RealtimeChannel | null = null;
     let lastTypingSentAt = 0;
+    let subscribed = false;
 
     const syncTypingNames = () => {
-      setTypingNames(Array.from(typing.values(), (entry) => entry.nickname).slice(0, 3));
+      setTypingState({
+        roomCode,
+        names: Array.from(typing.values(), (entry) => entry.nickname).slice(0, 3),
+      });
     };
 
     const clearTypingUser = (id: string) => {
@@ -162,10 +171,13 @@ export default function ChatFocusPresence() {
     channel = supabase
       .channel(`na-miuda-typing-${roomCode}`, { config: { broadcast: { self: false } } })
       .on("broadcast", { event: "typing" }, ({ payload }) => handleTypingPayload(payload));
-    channel.subscribe();
+    channel.subscribe((status) => {
+      subscribed = status === "SUBSCRIBED";
+      if (subscribed && input.value.trim()) sendTyping(true);
+    });
 
     const sendTyping = (active: boolean) => {
-      if (!channel) return;
+      if (!channel || !subscribed) return;
       const nickname = localStorage.getItem("na-miuda-nickname")?.trim() || "Alguém";
       void channel.send({
         type: "broadcast",
@@ -194,11 +206,11 @@ export default function ChatFocusPresence() {
       composer.removeEventListener("submit", onSubmit);
       for (const entry of typing.values()) clearTimeout(entry.timer);
       typing.clear();
-      setTypingNames([]);
       if (channel) void supabase.removeChannel(channel);
     };
   }, [composer, roomCode]);
 
+  const typingNames = typingState.roomCode === roomCode ? typingState.names : [];
   if (!chatPanel || typingNames.length === 0) return null;
 
   const label = typingNames.length === 1
