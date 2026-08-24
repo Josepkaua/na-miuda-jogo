@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://na-miuda-jogo.onrender.com"),
   title: "Na Miúda! — Jogo do Impostor",
   description:
-    "Crie uma sala, chame os amigos e descubra quem está improvisando. Um jogo de dedução social brasileiro para jogar à distância.",
+    "Crie uma sala, converse pelo chat integrado e descubra quem está improvisando. Um jogo de dedução social brasileiro para jogar à distância.",
   icons: {
     icon: "/mascote-na-miuda.png",
     shortcut: "/mascote-na-miuda.png",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Na Miúda! — Todo mundo sabe. Menos um.",
     description:
-      "O jogo do impostor online para jogar com os amigos, onde cada um estiver.",
+      "O jogo do impostor online com chat integrado para jogar com os amigos, onde cada um estiver.",
     type: "website",
     locale: "pt_BR",
     images: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Na Miúda! — Todo mundo sabe. Menos um.",
     description:
-      "O jogo do impostor online para jogar com os amigos, onde cada um estiver.",
+      "O jogo do impostor online com chat integrado para jogar com os amigos, onde cada um estiver.",
     images: ["/og.png"],
   },
 };

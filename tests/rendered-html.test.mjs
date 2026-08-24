@@ -32,4 +32,5 @@ test("renders the production identity and social metadata", async () => {
   assert.match(html, /<meta[^>]+property=["']og:title["'][^>]+Na Miúda!/i);
   assert.match(html, /<meta[^>]+property=["']og:image["'][^>]+na-miuda-jogo\.onrender\.com\/og\.png/i);
   assert.match(html, /Criar sala e convidar/i);
+  assert.match(html, /chat do próprio jogo/i);
 });

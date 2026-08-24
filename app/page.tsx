@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
 
 type ThemeMode = "system" | "light" | "dark";
@@ -41,6 +41,15 @@ type Snapshot = {
 };
 
 type RoleInfo = { role: Role; word: string | null; category: string; roomId: string; roundNumber: number };
+
+type ChatMessage = {
+  id: number;
+  playerId: string;
+  nickname: string;
+  body: string;
+  createdAt: string;
+  isMe: boolean;
+};
 
 const categories = [
   { id: "paises", label: "Países", icon: "🌎", hint: "culturas e lugares do mundo" },
@@ -117,6 +126,21 @@ function normalizeSnapshot(value: Record<string, unknown>): Snapshot {
   };
 }
 
+function normalizeChatMessages(value: unknown): ChatMessage[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((message) => {
+    const item = message as Record<string, unknown>;
+    return {
+      id: Number(item.id),
+      playerId: String(item.player_id ?? ""),
+      nickname: String(item.nickname ?? "Jogador"),
+      body: String(item.body ?? ""),
+      createdAt: String(item.created_at ?? new Date().toISOString()),
+      isMe: Boolean(item.is_me),
+    };
+  }).filter((message) => Number.isFinite(message.id) && message.body.length > 0);
+}
+
 function makeDemoSnapshot(nickname: string, limit: number, category: string, seconds: number, impostors: number): Snapshot {
   const total = Math.min(Math.max(4, limit), 8);
   const players: Player[] = [
@@ -152,11 +176,20 @@ export default function Home() {
   const [now, setNow] = useState<number | null>(null);
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [showRules, setShowRules] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(0);
   const latestSnapshotRequest = useRef(0);
   const latestRoleRequest = useRef(0);
+  const latestChatRequest = useRef(0);
   const lastSnapshotPhase = useRef<Phase | null>(null);
   const activeRoomCode = useRef<string | null>(null);
   const profileRequest = useRef(0);
+  const lastChatId = useRef<number | null>(null);
+  const chatScroll = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollChat = useRef(true);
 
   const remoteEnabled = hasRemoteBackend();
   const me = snapshot?.players.find((player) => player.isMe);
@@ -239,6 +272,38 @@ export default function Home() {
     }
   }, []);
 
+  const loadChatMessages = useCallback(async (code: string, silent = false) => {
+    if (activeRoomCode.current !== code) return;
+    const requestNumber = ++latestChatRequest.current;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const afterId = lastChatId.current;
+    const { data, error: rpcError } = await supabase.rpc("list_chat_messages", {
+      p_code: code,
+      p_session_token: getSessionToken(),
+      p_after_id: afterId,
+    });
+    if (requestNumber !== latestChatRequest.current || activeRoomCode.current !== code) return;
+    if (rpcError) {
+      if (!silent) setError("Não foi possível carregar o chat agora.");
+      setChatLoading(false);
+      return;
+    }
+    const incoming = normalizeChatMessages(data);
+    if (incoming.length) {
+      lastChatId.current = Math.max(afterId ?? 0, ...incoming.map((message) => message.id));
+      setChatMessages((current) => {
+        const known = new Set(current.map((message) => message.id));
+        return [...current, ...incoming.filter((message) => !known.has(message.id))].sort((a, b) => a.id - b.id).slice(-120);
+      });
+      if (!shouldAutoScrollChat.current) {
+        const newFromOthers = incoming.filter((message) => !message.isMe).length;
+        if (newFromOthers) setUnreadChat((current) => current + newFromOthers);
+      }
+    }
+    setChatLoading(false);
+  }, []);
+
   useEffect(() => {
     if (!roomCode || demoMode || !remoteEnabled) return;
     let cancelled = false;
@@ -250,6 +315,32 @@ export default function Home() {
     timeout = window.setTimeout(() => void poll(), 1800);
     return () => { cancelled = true; window.clearTimeout(timeout); };
   }, [demoMode, loadSnapshot, remoteEnabled, roomCode]);
+
+  useEffect(() => {
+    if (!roomCode || demoMode || !remoteEnabled) return;
+    let cancelled = false;
+    let timeout: number;
+    shouldAutoScrollChat.current = true;
+    const poll = async () => {
+      await loadChatMessages(roomCode, true);
+      if (!cancelled) timeout = window.setTimeout(() => void poll(), 1400);
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      latestChatRequest.current += 1;
+      window.clearTimeout(timeout);
+    };
+  }, [demoMode, loadChatMessages, remoteEnabled, roomCode]);
+
+  useEffect(() => {
+    if (!shouldAutoScrollChat.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      chatScroll.current?.scrollTo({ top: chatScroll.current.scrollHeight, behavior: "smooth" });
+      setUnreadChat(0);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [chatMessages]);
 
   useEffect(() => {
     if (!roomCode || demoMode || !remoteEnabled) return;
@@ -297,11 +388,22 @@ export default function Home() {
     setNickname(value); setError(""); void updateProfile({ display_name: value }); return value;
   }
 
+  function prepareChatForRoom() {
+    latestChatRequest.current += 1;
+    lastChatId.current = null;
+    shouldAutoScrollChat.current = true;
+    setChatMessages([]);
+    setChatDraft("");
+    setUnreadChat(0);
+    setChatLoading(remoteEnabled);
+  }
+
   async function createRoom() {
     const validName = validateName(); if (!validName) return;
     setBusy(true); setError(""); setNotice("");
     try {
       if (!remoteEnabled) {
+        prepareChatForRoom();
         setDemoMode(true);
         setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount));
         setNotice("Demonstração aberta com jogadores simulados.");
@@ -314,6 +416,7 @@ export default function Home() {
       });
       if (rpcError) throw rpcError;
       const code = String((data as Record<string, unknown>).code);
+      prepareChatForRoom();
       activeRoomCode.current = code;
       window.history.replaceState({}, "", `?sala=${code}`);
       await loadSnapshot(code);
@@ -328,12 +431,13 @@ export default function Home() {
     setBusy(true); setError(""); setNotice("");
     try {
       if (!remoteEnabled) {
-        setDemoMode(true); setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount));
+        prepareChatForRoom(); setDemoMode(true); setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount));
         setNotice("A conexão remota está sendo preparada; você entrou na demonstração."); return;
       }
       const supabase = getSupabaseClient();
       const { error: rpcError } = await supabase!.rpc("join_room", { p_code: code, p_nickname: validName, p_session_token: getSessionToken() });
       if (rpcError) throw rpcError;
+      prepareChatForRoom();
       activeRoomCode.current = code;
       window.history.replaceState({}, "", `?sala=${code}`); await loadSnapshot(code);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível entrar na sala."); }
@@ -431,6 +535,59 @@ export default function Home() {
     }
   }
 
+  async function sendChatMessage() {
+    if (!snapshot || snapshot.phase === "reveal" || chatBusy) return;
+    const body = chatDraft.trim().replace(/\s+/g, " ");
+    if (!body) return;
+    if (body.length > 280) { setError("A mensagem pode ter no máximo 280 caracteres."); return; }
+
+    setChatBusy(true);
+    setError("");
+    shouldAutoScrollChat.current = true;
+    try {
+      if (demoMode) {
+        const message: ChatMessage = {
+          id: Date.now(),
+          playerId: me?.id ?? "me",
+          nickname: me?.nickname ?? nickname,
+          body,
+          createdAt: new Date().toISOString(),
+          isMe: true,
+        };
+        setChatMessages((current) => [...current, message]);
+        setChatDraft("");
+        return;
+      }
+      const supabase = getSupabaseClient();
+      const { error: rpcError } = await supabase!.rpc("send_chat_message", {
+        p_code: snapshot.code,
+        p_session_token: getSessionToken(),
+        p_body: body,
+      });
+      if (rpcError) throw rpcError;
+      setChatDraft("");
+      await loadChatMessages(snapshot.code);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível enviar a mensagem.");
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
+  function handleChatScroll() {
+    const element = chatScroll.current;
+    if (!element) return;
+    const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 56;
+    shouldAutoScrollChat.current = nearBottom;
+    if (nearBottom) setUnreadChat(0);
+  }
+
+  function jumpToLatestChat() {
+    shouldAutoScrollChat.current = true;
+    setUnreadChat(0);
+    chatScroll.current?.scrollTo({ top: chatScroll.current.scrollHeight, behavior: "smooth" });
+  }
+
   function acceptSuggestion() {
     setImpostorCount(suggestion.impostors); setDiscussionSeconds(suggestion.seconds); setShowSuggestion(false);
     setNotice("Sugestão aplicada. Você ainda pode alterar tudo.");
@@ -448,8 +605,11 @@ export default function Home() {
     activeRoomCode.current = null;
     latestSnapshotRequest.current += 1;
     latestRoleRequest.current += 1;
+    latestChatRequest.current += 1;
     lastSnapshotPhase.current = null;
+    lastChatId.current = null;
     setSnapshot(null); setRoleInfo(null); setRoleVisible(false); setSelectedVote(null); setDemoMode(false); setNotice(""); setError("");
+    setChatMessages([]); setChatDraft(""); setUnreadChat(0); setChatLoading(false);
     window.history.replaceState({}, "", window.location.pathname);
     if (leavingSnapshot && remoteEnabled && !demoMode) {
       const supabase = getSupabaseClient();
@@ -475,7 +635,7 @@ export default function Home() {
             <div className="hero-mascot" aria-hidden="true"><span>?</span></div>
             <span className="eyebrow"><b>●</b> Feito para jogar de qualquer lugar</span>
             <h1>Todo mundo sabe.<br /><em>Menos um.</em></h1>
-            <p>Crie uma sala, chame os amigos para a ligação e descubra quem está improvisando. Sem instalar nada.</p>
+            <p>Crie uma sala, envie o convite e conversem pelo chat do próprio jogo para descobrir quem está improvisando. Sem instalar nada.</p>
             <div className="proof-row"><span>3–20 jogadores</span><span>•</span><span>1–5 impostores</span><span>•</span><span>Feito em PT-BR</span></div>
             <div className="category-preview" aria-hidden="true"><span>🌎</span><span>🍕</span><span>⚽</span><span>🎬</span><span>🎮</span><b>+ muitos temas</b></div>
           </section>
@@ -511,7 +671,7 @@ export default function Home() {
           <section className="how-it-works">
             <div><span>01</span><strong>Crie e convide</strong><p>Escolha tamanho, tempo, temas e número de impostores.</p></div>
             <div><span>02</span><strong>Receba seu segredo</strong><p>A cada rodada os papéis e a ordem mudam automaticamente.</p></div>
-            <div><span>03</span><strong>Dê pistas e vote</strong><p>Converse por voz, observe o grupo e escolha seu suspeito.</p></div>
+            <div><span>03</span><strong>Converse e vote</strong><p>Troque pistas no chat da sala, observe o grupo e escolha seu suspeito.</p></div>
           </section>
         </div>
       ) : (
@@ -537,13 +697,26 @@ export default function Home() {
             </section>
 
             <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => <div className="player-row" key={player.id}><div className="player-order">{index + 1}</div><Avatar name={player.nickname} /><div className="player-name"><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className={`status-dot ${player.isOnline ? "online" : ""}`} />{snapshot.phase === "results" && <b className="score">{player.score} pt</b>}</div>)}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
+            <ChatPanel
+              phase={snapshot.phase}
+              messages={chatMessages}
+              draft={chatDraft}
+              busy={chatBusy}
+              loading={chatLoading}
+              unread={unreadChat}
+              listRef={chatScroll}
+              onDraftChange={setChatDraft}
+              onSend={sendChatMessage}
+              onScroll={handleChatScroll}
+              onJumpToLatest={jumpToLatestChat}
+            />
           </div>
           {(error || notice) && <div className={`toast ${error ? "error" : "success"}`} role={error ? "alert" : "status"} aria-live="polite">{error || notice}<button aria-label="Fechar aviso" onClick={() => { setError(""); setNotice(""); }}>×</button></div>}
         </div>
       )}
 
       {showRules && <RulesModal onClose={closeRules} />}
-      <footer><span>Na Miúda! • uma brincadeira entre amigos</span><span>Use WhatsApp, Discord ou sua chamada preferida para conversar.</span></footer>
+      <footer><span>Na Miúda! • uma brincadeira entre amigos</span><span>Chat da sala integrado para jogar de qualquer lugar.</span></footer>
     </main>
   );
 }
@@ -568,6 +741,71 @@ function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: 
   </div>;
 }
 
+function ChatPanel({
+  phase,
+  messages,
+  draft,
+  busy,
+  loading,
+  unread,
+  listRef,
+  onDraftChange,
+  onSend,
+  onScroll,
+  onJumpToLatest,
+}: {
+  phase: Phase;
+  messages: ChatMessage[];
+  draft: string;
+  busy: boolean;
+  loading: boolean;
+  unread: number;
+  listRef: RefObject<HTMLDivElement | null>;
+  onDraftChange: (value: string) => void;
+  onSend: () => void;
+  onScroll: () => void;
+  onJumpToLatest: () => void;
+}) {
+  const paused = phase === "reveal";
+  const phaseHint = paused
+    ? "Chat pausado enquanto todos veem o papel"
+    : phase === "discussion"
+      ? "Dê pistas sem escrever a palavra secreta"
+      : phase === "voting"
+        ? "Votação aberta — não revele seu voto"
+        : phase === "results"
+          ? "Comente o resultado e prepare a revanche"
+          : "Aproveitem para combinar a partida";
+
+  return <section className="chat-panel panel" aria-label="Chat da sala">
+    <div className="chat-heading">
+      <div><span className="micro-label">Conversa da sala</span><h3>Chat da turma</h3></div>
+      <span className="chat-live"><i /> ao vivo</span>
+    </div>
+    <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span>{paused ? "🔒" : "💬"}</span>{phaseHint}</div>
+    <div className="chat-messages" ref={listRef} onScroll={onScroll} aria-live="polite" aria-relevant="additions">
+      {loading && messages.length === 0 ? <div className="chat-empty"><span>•••</span><strong>Abrindo a conversa...</strong></div> : messages.length === 0 ? <div className="chat-empty"><span>👋</span><strong>O chat está pronto</strong><p>Seja o primeiro a mandar uma mensagem para a turma.</p></div> : messages.map((message) => <div className={`chat-message ${message.isMe ? "mine" : ""}`} key={message.id}>
+        {!message.isMe && <Avatar name={message.nickname} />}
+        <div><span><strong>{message.isMe ? "Você" : message.nickname}</strong><time dateTime={message.createdAt}>{formatChatTime(message.createdAt)}</time></span><p>{message.body}</p></div>
+      </div>)}
+    </div>
+    {unread > 0 && <button className="new-messages-button" type="button" onClick={onJumpToLatest}>{unread} {unread === 1 ? "mensagem nova" : "mensagens novas"} ↓</button>}
+    <form className="chat-composer" onSubmit={(event) => { event.preventDefault(); onSend(); }}>
+      <input
+        value={draft}
+        maxLength={280}
+        disabled={paused || busy}
+        onChange={(event) => onDraftChange(event.target.value)}
+        placeholder={paused ? "Chat temporariamente pausado" : "Escreva para a turma..."}
+        aria-label="Mensagem para o chat da sala"
+        autoComplete="off"
+      />
+      <button type="submit" disabled={paused || busy || !draft.trim()} aria-label="Enviar mensagem">{busy ? "…" : "➤"}</button>
+    </form>
+    <div className="chat-foot"><span>Enter para enviar</span>{draft.length >= 220 && <span>{draft.length}/280</span>}</div>
+  </section>;
+}
+
 function Lobby({ snapshot, me, readyCount, selectedCategory, toggleReady, startRound, busy }: { snapshot: Snapshot; me?: Player; readyCount: number; selectedCategory: (typeof categories)[number]; toggleReady: () => void; startRound: () => void; busy: boolean }) {
   const onlinePlayers = snapshot.players.filter((player) => player.isOnline);
   const canStart = onlinePlayers.length >= 3 && readyCount === onlinePlayers.length;
@@ -590,7 +828,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja sua palavra.</b><span>Os jogadores recebem a mesma palavra; os impostores recebem apenas o assunto.</span></li><li><b>Dê uma pista.</b><span>Fale algo relacionado sem entregar a resposta.</span></li><li><b>Converse e vote.</b><span>Descubra quem improvisou e revele o resultado.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Papéis e ordem são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja sua palavra.</b><span>Os jogadores recebem a mesma palavra; os impostores recebem apenas o assunto.</span></li><li><b>Dê uma pista no chat.</b><span>Escreva algo relacionado sem entregar a resposta.</span></li><li><b>Converse e vote.</b><span>Descubra quem improvisou e revele o resultado.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Papéis e ordem são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
 }
 
 function Avatar({ name }: { name: string }) {
@@ -601,4 +839,10 @@ function Avatar({ name }: { name: string }) {
 
 function formatTime(total: number) {
   return `${Math.floor(total / 60).toString().padStart(2, "0")}:${Math.floor(total % 60).toString().padStart(2, "0")}`;
+}
+
+function formatChatTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "agora";
+  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }

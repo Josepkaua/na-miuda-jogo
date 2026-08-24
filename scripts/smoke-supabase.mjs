@@ -13,6 +13,8 @@ const supabase = createClient(url, key, {
 
 const directRooms = await supabase.from("rooms").select("id").limit(1);
 if (!directRooms.error) throw new Error("Direct table access should be blocked.");
+const directMessages = await supabase.from("chat_messages").select("id").limit(1);
+if (!directMessages.error) throw new Error("Direct chat table access should be blocked.");
 
 function sessionToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(24)), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -57,11 +59,28 @@ const code = created.code;
 await rpc("join_room", { p_code: code, p_nickname: "Teste Bia", p_session_token: tokens[1] });
 await rpc("join_room", { p_code: code, p_nickname: "Teste Davi", p_session_token: tokens[2] });
 
+await rpc("send_chat_message", { p_code: code, p_session_token: tokens[0], p_body: "A sala abriu!" });
+await rpc("send_chat_message", { p_code: code, p_session_token: tokens[1], p_body: "Cheguei para jogar." });
+const lobbyChat = await rpc("list_chat_messages", { p_code: code, p_session_token: tokens[2], p_after_id: null });
+if (lobbyChat.length !== 2 || lobbyChat[0].body !== "A sala abriu!" || lobbyChat.some((message) => message.is_me)) {
+  throw new Error("Lobby chat synchronization failed.");
+}
+await expectRpcFailure(
+  "list_chat_messages",
+  { p_code: code, p_session_token: sessionToken(), p_after_id: null },
+  "A non-player accessed the room chat.",
+);
+
 for (const token of tokens) {
   await rpc("set_player_ready", { p_code: code, p_session_token: token, p_ready: true });
 }
 
 await rpc("start_round", { p_code: code, p_session_token: tokens[0] });
+await expectRpcFailure(
+  "send_chat_message",
+  { p_code: code, p_session_token: tokens[0], p_body: "Isto não pode aparecer." },
+  "The chat accepted a message during role reveal.",
+);
 const snapshots = await Promise.all(tokens.map((token) => rpc("room_snapshot", { p_code: code, p_session_token: token })));
 const roles = await Promise.all(tokens.map((token) => rpc("get_my_role", { p_code: code, p_session_token: token })));
 
@@ -83,6 +102,11 @@ const revealSnapshot = await rpc("room_snapshot", { p_code: code, p_session_toke
 if (revealSnapshot.roles_seen_count !== tokens.length || revealSnapshot.round_player_count !== tokens.length) throw new Error("Role reveal acknowledgement failed.");
 
 await rpc("advance_phase", { p_code: code, p_session_token: tokens[0], p_expected_phase: "reveal", p_expected_round: 1 });
+await rpc("send_chat_message", { p_code: code, p_session_token: tokens[2], p_body: "Minha pista é bem brasileira." });
+const discussionChat = await rpc("list_chat_messages", { p_code: code, p_session_token: tokens[0], p_after_id: lobbyChat.at(-1).id });
+if (discussionChat.length !== 1 || discussionChat[0].nickname !== "Teste Davi" || discussionChat[0].body !== "Minha pista é bem brasileira.") {
+  throw new Error("Discussion chat synchronization failed.");
+}
 await expectRpcFailure(
   "advance_phase",
   { p_code: code, p_session_token: tokens[0], p_expected_phase: "reveal", p_expected_round: 1 },
@@ -167,5 +191,6 @@ console.log(JSON.stringify({
   roles: roles.map((role) => role.role),
   result: result.winner,
   hostTransfer: newHost.nickname,
+  chatMessages: lobbyChat.length + discussionChat.length,
   multipleImpostors: multiResult.winner,
 }));
