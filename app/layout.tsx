@@ -5,6 +5,7 @@ import "./cinematic-transitions.css";
 import "./game-polish.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
+import GameAutoFlow from "./game-auto-flow";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -54,6 +55,7 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body>
         {children}
+        <GameAutoFlow />
         <GameMotionController />
         <GamePhaseGuard />
       </body>
