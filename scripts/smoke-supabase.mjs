@@ -15,6 +15,8 @@ const directRooms = await supabase.from("rooms").select("id").limit(1);
 if (!directRooms.error) throw new Error("Direct table access should be blocked.");
 const directMessages = await supabase.from("chat_messages").select("id").limit(1);
 if (!directMessages.error) throw new Error("Direct chat table access should be blocked.");
+const directDiscussionVotes = await supabase.from("discussion_votes").select("round_id").limit(1);
+if (!directDiscussionVotes.error) throw new Error("Direct discussion-vote table access should be blocked.");
 
 function sessionToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(24)), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -86,6 +88,7 @@ const roles = await Promise.all(tokens.map((token) => rpc("get_my_role", { p_cod
 
 if (roles.filter((role) => role.role === "impostor").length !== 1) throw new Error("Unexpected impostor count.");
 if (roles.filter((role) => role.word).length !== 2) throw new Error("Secret visibility failed.");
+if (roles.filter((role) => role.role === "impostor" && role.hint).length !== 1 || roles.some((role) => role.role !== "impostor" && role.hint)) throw new Error("Impostor hint visibility failed.");
 if (new Set(roles.map((role) => role.turn_order)).size !== tokens.length) throw new Error("Turn order is not unique.");
 if (snapshots.some((snapshot) => snapshot.has_voted || snapshot.eligible_voter_count !== tokens.length)) throw new Error("Initial voting state failed.");
 
@@ -117,6 +120,27 @@ await expectRpcFailure(
   { p_code: code, p_session_token: tokens[0] },
   "The obsolete two-argument phase transition is still callable.",
 );
+let turnSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[0] });
+while (turnSnapshot.discussion_stage === "turns") {
+  await rpc("advance_discussion_turn", {
+    p_code: code,
+    p_session_token: tokens[0],
+    p_expected_round: 1,
+    p_expected_turn: turnSnapshot.discussion_turn_order,
+  });
+  turnSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[0] });
+}
+if (turnSnapshot.discussion_stage !== "decision" || turnSnapshot.discussion_turn_player_id !== null) throw new Error("Discussion turn flow did not open the group decision.");
+await expectRpcFailure(
+  "send_chat_message",
+  { p_code: code, p_session_token: tokens[0], p_body: "Mensagem durante a decisão." },
+  "The chat accepted a message during the group decision.",
+);
+await rpc("cast_discussion_choice", { p_code: code, p_session_token: tokens[0], p_choice: "more_time", p_expected_round: 1 });
+await rpc("cast_discussion_choice", { p_code: code, p_session_token: tokens[1], p_choice: "more_time", p_expected_round: 1 });
+const extraTimeSnapshot = await rpc("room_snapshot", { p_code: code, p_session_token: tokens[2] });
+if (extraTimeSnapshot.discussion_stage !== "free_chat" || extraTimeSnapshot.discussion_vote_count !== 2 || extraTimeSnapshot.discussion_more_time_count !== 2) throw new Error("More-time majority did not reopen the chat.");
+await rpc("send_chat_message", { p_code: code, p_session_token: tokens[2], p_body: "O tempo extra abriu." });
 await rpc("advance_phase", { p_code: code, p_session_token: tokens[0], p_expected_phase: "discussion", p_expected_round: 1 });
 
 const playerIds = snapshots[0].players.map((player) => player.id);
@@ -135,6 +159,7 @@ const result = await rpc("room_snapshot", { p_code: code, p_session_token: token
 if (result.phase !== "results" || !result.revealed_word || result.impostor_player_ids.length !== 1) {
   throw new Error("Result reveal failed.");
 }
+if (!result.players.some((player) => player.score > 0)) throw new Error("Round points were not added to the scoreboard.");
 
 await rpc("advance_phase", { p_code: code, p_session_token: tokens[0], p_expected_phase: "results", p_expected_round: 1 });
 await rpc("leave_room", { p_code: code, p_session_token: tokens[0] });
@@ -192,5 +217,7 @@ console.log(JSON.stringify({
   result: result.winner,
   hostTransfer: newHost.nickname,
   chatMessages: lobbyChat.length + discussionChat.length,
+  discussionDecision: extraTimeSnapshot.discussion_stage,
+  impostorHint: Boolean(roles.find((role) => role.role === "impostor")?.hint),
   multipleImpostors: multiResult.winner,
 }));
