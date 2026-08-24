@@ -169,6 +169,36 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .room-code-block button { border: 0; background: var(--lime); color: #082e34; padding: 10px 13px; border-radius: 10px; font-size: 11px; font-weight: 900; cursor: pointer; }
 .game-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "main players" "main chat"; gap: 18px; align-items: start; }
 .main-panel { grid-area: main; min-height: 680px; padding: 34px; }
+.game-grid.chat-focus { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "chat main" "chat players"; }
+.chat-focus .chat-panel { min-height: 760px; align-self: stretch; display: flex; flex-direction: column; padding: 25px; border-color: color-mix(in srgb, var(--lime) 42%, var(--line)); box-shadow: 0 28px 85px rgba(6,44,50,.17), 0 0 0 3px color-mix(in srgb, var(--lime) 8%, transparent); }
+.chat-focus .chat-heading { padding-bottom: 18px; }
+.chat-focus .chat-heading h3 { font-size: 30px; }
+.chat-focus .chat-live { color: var(--success); }
+.chat-focus .chat-messages { flex: 1; height: auto; min-height: 520px; padding: 20px 8px 12px; }
+.chat-focus .chat-empty { min-height: 500px; }
+.chat-focus .chat-message { gap: 10px; margin-bottom: 15px; }
+.chat-focus .chat-message .avatar { width: 36px; height: 36px; border-radius: 12px; font-size: 12px; }
+.chat-focus .chat-message > div { max-width: 76%; }
+.chat-focus .chat-message > div > span { padding-bottom: 5px; font-size: 9px; }
+.chat-focus .chat-message > div > span strong { font-size: 11px; }
+.chat-focus .chat-message p { padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+.chat-focus .chat-composer { grid-template-columns: minmax(0, 1fr) 50px; gap: 9px; padding-top: 14px; }
+.chat-focus .chat-composer input, .chat-focus .chat-composer button { height: 50px; }
+.chat-focus .chat-composer input { padding-inline: 15px; font-size: 13px; }
+.chat-focus .chat-composer button { width: 50px; font-size: 18px; }
+.chat-focus .new-messages-button { bottom: 92px; }
+.chat-focus .main-panel { min-height: 0; padding: 23px; }
+.chat-focus .centered-phase { justify-content: flex-start; }
+.chat-focus .timer-ring { width: 112px; height: 112px; border-width: 9px; margin-bottom: 15px; }
+.chat-focus .timer-ring strong { font-size: 27px; }
+.chat-focus .phase-content h3 { font-size: 27px; }
+.chat-focus .phase-description { margin-bottom: 15px; font-size: 11px; line-height: 1.5; }
+.chat-focus .tip-box { padding: 12px; }
+.chat-focus .tip-box > span { font-size: 20px; }
+.chat-focus .tip-box p { font-size: 10px; }
+.chat-focus .secret-recheck { width: 100%; }
+.chat-focus .phase-action { margin-top: 16px; }
+.chat-focus .waiting-copy { margin-top: 16px; font-size: 11px; }
 .phase-content { height: 100%; }
 .phase-content h3 { margin: 8px 0 10px; font-size: clamp(30px, 4vw, 45px); line-height: 1; letter-spacing: -.055em; }
 .phase-description { max-width: 610px; color: var(--muted); line-height: 1.65; margin: 0 auto 25px; }
@@ -323,9 +353,12 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .entry-card { width: min(560px, 100%); margin: 25px auto 0; }
   .how-it-works { margin-top: 48px; }
   .game-grid { grid-template-columns: 1fr; grid-template-areas: "players" "main" "chat"; }
+  .game-grid.chat-focus { grid-template-columns: 1fr; grid-template-areas: "chat" "main" "players"; }
   .player-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 14px; }
   .chat-panel { width: 100%; }
   .chat-messages { height: 340px; }
+  .chat-focus .chat-panel { min-height: min(680px, calc(100vh - 110px)); }
+  .chat-focus .chat-messages { min-height: 430px; }
 }
 
 @media (max-width: 600px) {
@@ -357,6 +390,10 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .players-panel { padding: 18px; }
   .chat-panel { padding: 16px; }
   .chat-messages { height: min(380px, 52vh); }
+  .chat-focus .chat-panel { min-height: min(610px, calc(100vh - 92px)); padding: 18px; }
+  .chat-focus .chat-heading h3 { font-size: 25px; }
+  .chat-focus .chat-messages { min-height: 390px; padding-inline: 2px; }
+  .chat-focus .chat-message > div { max-width: 82%; }
   .player-list { grid-template-columns: 1fr; }
   .settings-title span { display: none; }
   .ready-box { grid-template-columns: 1fr; gap: 10px; }

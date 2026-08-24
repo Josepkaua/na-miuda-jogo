@@ -677,7 +677,7 @@ export default function Home() {
       ) : (
         <div className="game-wrap">
           <section className="room-header panel"><div><span className="micro-label">{phaseLabels[snapshot.phase]}</span><h2>{snapshot.phase === "lobby" ? "Junte a turma" : `Rodada ${snapshot.roundNumber}`}</h2></div><div className="room-code-block"><span>Código da sala</span><strong>{snapshot.code}</strong><button onClick={copyInvite}>Copiar convite</button></div></section>
-          <div className="game-grid">
+          <div className={`game-grid ${snapshot.phase === "discussion" ? "chat-focus" : ""}`}>
             <section className="main-panel panel">
               {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
@@ -779,7 +779,7 @@ function ChatPanel({
 
   return <section className="chat-panel panel" aria-label="Chat da sala">
     <div className="chat-heading">
-      <div><span className="micro-label">Conversa da sala</span><h3>Chat da turma</h3></div>
+      <div><span className="micro-label">{phase === "discussion" ? "Conversem e descubram" : "Conversa da sala"}</span><h3>{phase === "discussion" ? "Discussão ao vivo" : "Chat da turma"}</h3></div>
       <span className="chat-live"><i /> ao vivo</span>
     </div>
     <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span>{paused ? "🔒" : "💬"}</span>{phaseHint}</div>
