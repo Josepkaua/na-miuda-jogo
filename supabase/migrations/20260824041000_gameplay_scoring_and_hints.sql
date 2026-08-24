@@ -85,7 +85,6 @@ begin
     if vote_total < player_total
       and (target_room.phase_ends_at is null or target_room.phase_ends_at > now())
     then raise exception 'Aguarde todos votarem ou o tempo da votação terminar.'; end if;
-    if vote_total = 0 then raise exception 'É necessário pelo menos um voto para revelar o resultado.'; end if;
 
     select coalesce(array_agg(player_id), '{}') into impostors
       from private.round_roles
@@ -101,7 +100,9 @@ begin
       coalesce(array_length(impostors, 1), 0) - coalesce(array_length(departed_impostors, 1), 0)
     );
 
-    if remaining_slots > 0 then
+    -- When the timer expires with zero votes, nobody is eliminated and the active impostor wins.
+    -- This keeps the automatic phase transition deterministic instead of trapping the room in voting.
+    if vote_total > 0 and remaining_slots > 0 then
       with candidates as (
         select rr.player_id, count(v.target_player_id)::integer as votes
         from private.round_roles rr
