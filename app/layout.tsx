@@ -3,6 +3,7 @@ import "./globals.css";
 import "./discussion-refinement.css";
 import "./cinematic-transitions.css";
 import "./game-polish.css";
+import "./automatic-flow.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
