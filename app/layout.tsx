@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://impostor-distante.kauapraseres56.chatgpt.site"),
+  metadataBase: new URL("https://na-miuda-jogo.onrender.com"),
   title: "Na Miúda! — Jogo do Impostor",
   description:
     "Crie uma sala, chame os amigos e descubra quem está improvisando. Um jogo de dedução social brasileiro para jogar à distância.",

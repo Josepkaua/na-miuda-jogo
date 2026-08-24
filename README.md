@@ -5,7 +5,7 @@ Um jogo brasileiro de dedução social para jogar à distância. Todo mundo rece
 ## O que já funciona
 
 - Salas privadas com código e link de convite
-- 3 a 20 jogadores e até 4 impostores
+- 3 a 20 jogadores e até 5 impostores (com limite equilibrado pelo tamanho do grupo)
 - 12 temas, incluindo países, comidas, Brasil, futebol, filmes e modo misto
 - Sugestões automáticas de tempo e quantidade de impostores
 - Sorteio secreto de papéis, ordem de fala, cronômetro, votação e resultado

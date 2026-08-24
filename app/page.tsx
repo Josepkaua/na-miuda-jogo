@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
 
 type ThemeMode = "system" | "light" | "dark";
@@ -27,7 +28,12 @@ type Snapshot = {
   discussionSeconds: number;
   roundNumber: number;
   phaseEndsAt: string | null;
+  serverNow: string | null;
   voteCount: number;
+  hasVoted: boolean;
+  eligibleVoterCount: number;
+  rolesSeenCount: number;
+  roundPlayerCount: number;
   revealedWord: string | null;
   eliminatedPlayerIds: string[];
   impostorPlayerIds: string[];
@@ -35,7 +41,7 @@ type Snapshot = {
   players: Player[];
 };
 
-type RoleInfo = { role: Role; word: string | null; category: string };
+type RoleInfo = { role: Role; word: string | null; category: string; roomId: string; roundNumber: number };
 
 const categories = [
   { id: "paises", label: "Países", icon: "🌎", hint: "culturas e lugares do mundo" },
@@ -94,7 +100,12 @@ function normalizeSnapshot(value: Record<string, unknown>): Snapshot {
     discussionSeconds: Number(value.discussion_seconds ?? 180),
     roundNumber: Number(value.round_number ?? 0),
     phaseEndsAt: value.phase_ends_at ? String(value.phase_ends_at) : null,
+    serverNow: value.server_now ? String(value.server_now) : null,
     voteCount: Number(value.vote_count ?? 0),
+    hasVoted: Boolean(value.has_voted),
+    eligibleVoterCount: Number(value.eligible_voter_count ?? players.length),
+    rolesSeenCount: Number(value.roles_seen_count ?? 0),
+    roundPlayerCount: Number(value.round_player_count ?? players.length),
     revealedWord: value.revealed_word ? String(value.revealed_word) : null,
     eliminatedPlayerIds: Array.isArray(value.eliminated_player_ids) ? value.eliminated_player_ids.map(String) : [],
     impostorPlayerIds: Array.isArray(value.impostor_player_ids) ? value.impostor_player_ids.map(String) : [],
@@ -116,7 +127,7 @@ function makeDemoSnapshot(nickname: string, limit: number, category: string, sec
   return {
     roomId: "demo-room", code: "JOGAR", phase: "lobby", category,
     playerLimit: limit, impostorCount: Math.min(impostors, Math.max(1, total - 2)),
-    discussionSeconds: seconds, roundNumber: 0, phaseEndsAt: null, voteCount: 0,
+    discussionSeconds: seconds, roundNumber: 0, phaseEndsAt: null, serverNow: null, voteCount: 0, hasVoted: false, eligibleVoterCount: players.length, rolesSeenCount: 0, roundPlayerCount: players.length,
     revealedWord: null, eliminatedPlayerIds: [], impostorPlayerIds: [], winner: null, players,
   };
 }
@@ -140,18 +151,30 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [demoMode, setDemoMode] = useState(false);
   const [now, setNow] = useState<number | null>(null);
+  const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [showRules, setShowRules] = useState(false);
+  const latestSnapshotRequest = useRef(0);
+  const latestRoleRequest = useRef(0);
+  const lastSnapshotPhase = useRef<Phase | null>(null);
+  const activeRoomCode = useRef<string | null>(null);
+  const profileRequest = useRef(0);
 
   const remoteEnabled = hasRemoteBackend();
   const me = snapshot?.players.find((player) => player.isMe);
   const isHost = Boolean(me?.isHost);
-  const readyCount = snapshot?.players.filter((player) => player.isReady).length ?? 0;
+  const currentRoleInfo = roleInfo?.roomId === snapshot?.roomId && roleInfo?.roundNumber === snapshot?.roundNumber ? roleInfo : null;
+  const readyCount = snapshot?.players.filter((player) => player.isOnline && player.isReady).length ?? 0;
   const onlineCount = snapshot?.players.filter((player) => player.isOnline).length ?? 0;
+  const roomCode = snapshot?.code;
   const suggestion = recommendationFor(playerLimit);
   const maxImpostors = Math.max(1, Math.min(5, Math.floor((playerLimit - 1) / 3)));
-  const selectedCategory = categories.find((item) => item.id === (snapshot?.category ?? category)) ?? categories.at(-1)!;
+  const activeCategory = snapshot && snapshot.phase !== "lobby" && currentRoleInfo?.category
+    ? currentRoleInfo.category
+    : snapshot?.category ?? category;
+  const selectedCategory = categories.find((item) => item.id === activeCategory) ?? categories.at(-1)!;
+  const roleCategory = categories.find((item) => item.id === currentRoleInfo?.category) ?? selectedCategory;
   const secondsLeft = snapshot?.phaseEndsAt && now
-    ? Math.max(0, Math.ceil((new Date(snapshot.phaseEndsAt).getTime() - now) / 1000))
+    ? Math.max(0, Math.ceil((new Date(snapshot.phaseEndsAt).getTime() - (now + clockOffsetMs)) / 1000))
     : null;
 
   useEffect(() => {
@@ -168,6 +191,29 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!remoteEnabled) return;
+    const requestNumber = ++profileRequest.current;
+    void (async () => {
+      const supabase = getSupabaseClient();
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || requestNumber !== profileRequest.current) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name, preferred_theme")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (requestNumber !== profileRequest.current) return;
+      const savedName = profile?.display_name?.trim();
+      const savedTheme = profile?.preferred_theme as ThemeMode | undefined;
+      if (savedName) setNickname(savedName);
+      if (savedTheme && ["system", "light", "dark"].includes(savedTheme)) setTheme(savedTheme);
+      if (user.email) setEmail(user.email);
+    })();
+    return () => { profileRequest.current += 1; };
+  }, [remoteEnabled]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("na-miuda-theme", theme);
   }, [theme]);
@@ -178,46 +224,78 @@ export default function Home() {
   }, []);
 
   const loadSnapshot = useCallback(async (code: string, silent = false) => {
+    if (activeRoomCode.current !== code) return;
+    const requestNumber = ++latestSnapshotRequest.current;
     const supabase = getSupabaseClient();
     if (!supabase) return;
     const { data, error: rpcError } = await supabase.rpc("room_snapshot", { p_code: code, p_session_token: getSessionToken() });
+    if (requestNumber !== latestSnapshotRequest.current || activeRoomCode.current !== code) return;
     if (rpcError) { if (!silent) setError(rpcError.message); return; }
-    if (data) setSnapshot(normalizeSnapshot(data as Record<string, unknown>));
+    if (data) {
+      const normalized = normalizeSnapshot(data as Record<string, unknown>);
+      if (lastSnapshotPhase.current && lastSnapshotPhase.current !== normalized.phase) setRoleVisible(false);
+      lastSnapshotPhase.current = normalized.phase;
+      if (normalized.serverNow) setClockOffsetMs(new Date(normalized.serverNow).getTime() - Date.now());
+      setSnapshot(normalized);
+    }
   }, []);
 
   useEffect(() => {
-    if (!snapshot || demoMode || !remoteEnabled) return;
-    const interval = window.setInterval(() => void loadSnapshot(snapshot.code, true), 1800);
-    return () => window.clearInterval(interval);
-  }, [demoMode, loadSnapshot, remoteEnabled, snapshot]);
+    if (!roomCode || demoMode || !remoteEnabled) return;
+    let cancelled = false;
+    let timeout: number;
+    const poll = async () => {
+      await loadSnapshot(roomCode, true);
+      if (!cancelled) timeout = window.setTimeout(() => void poll(), 1800);
+    };
+    timeout = window.setTimeout(() => void poll(), 1800);
+    return () => { cancelled = true; window.clearTimeout(timeout); };
+  }, [demoMode, loadSnapshot, remoteEnabled, roomCode]);
 
   useEffect(() => {
-    if (!snapshot || demoMode || !remoteEnabled) return;
-    const interval = window.setInterval(async () => {
+    if (!roomCode || demoMode || !remoteEnabled) return;
+    const heartbeat = async () => {
       const supabase = getSupabaseClient();
-      if (supabase) await supabase.rpc("heartbeat_room", { p_code: snapshot.code, p_session_token: getSessionToken() });
-    }, 15000);
+      if (supabase) await supabase.rpc("heartbeat_room", { p_code: roomCode, p_session_token: getSessionToken() });
+    };
+    void heartbeat();
+    const interval = window.setInterval(() => void heartbeat(), 12000);
     return () => window.clearInterval(interval);
-  }, [demoMode, remoteEnabled, snapshot]);
+  }, [demoMode, remoteEnabled, roomCode]);
 
   useEffect(() => {
-    if (!snapshot || demoMode || !remoteEnabled || snapshot.phase === "lobby" || snapshot.phase === "results" || roleInfo) return;
+    if (!snapshot || demoMode || !remoteEnabled || snapshot.phase === "lobby" || snapshot.phase === "results" || currentRoleInfo) return;
+    const roleRequestNumber = ++latestRoleRequest.current;
     void (async () => {
       const supabase = getSupabaseClient();
-      const { data } = await supabase!.rpc("get_my_role", { p_code: snapshot.code, p_session_token: getSessionToken() });
+      const { data, error: roleError } = await supabase!.rpc("get_my_role", { p_code: snapshot.code, p_session_token: getSessionToken() });
+      if (roleRequestNumber !== latestRoleRequest.current || activeRoomCode.current !== snapshot.code) return;
+      if (roleError) { setError("Não foi possível carregar seu papel. Tentando novamente..."); return; }
       if (data) {
         const value = data as Record<string, unknown>;
-        setRoleInfo({ role: value.role === "impostor" ? "impostor" : "player", word: value.word ? String(value.word) : null, category: String(value.category ?? snapshot.category) });
+        setError("");
+        setRoleVisible(false);
+        setSelectedVote(null);
+        setRoleInfo({ role: value.role === "impostor" ? "impostor" : "player", word: value.word ? String(value.word) : null, category: String(value.category ?? snapshot.category), roomId: snapshot.roomId, roundNumber: snapshot.roundNumber });
       }
     })();
-  }, [demoMode, remoteEnabled, roleInfo, snapshot]);
+  }, [currentRoleInfo, demoMode, remoteEnabled, snapshot]);
+
+  const updateProfile = useCallback(async (changes: { display_name?: string; preferred_theme?: ThemeMode }) => {
+    if (!remoteEnabled) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from("profiles").update(changes).eq("user_id", user.id);
+  }, [remoteEnabled]);
+  const closeRules = useCallback(() => setShowRules(false), []);
 
   function validateName() {
     const value = nickname.trim().replace(/\s+/g, " ");
     if (value.length < 2) { setError("Digite um apelido com pelo menos 2 letras."); return null; }
     if (value.length > 20) { setError("O apelido pode ter no máximo 20 caracteres."); return null; }
     localStorage.setItem("na-miuda-nickname", value);
-    setNickname(value); setError(""); return value;
+    setNickname(value); setError(""); void updateProfile({ display_name: value }); return value;
   }
 
   async function createRoom() {
@@ -237,6 +315,7 @@ export default function Home() {
       });
       if (rpcError) throw rpcError;
       const code = String((data as Record<string, unknown>).code);
+      activeRoomCode.current = code;
       window.history.replaceState({}, "", `?sala=${code}`);
       await loadSnapshot(code);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível criar a sala."); }
@@ -256,26 +335,36 @@ export default function Home() {
       const supabase = getSupabaseClient();
       const { error: rpcError } = await supabase!.rpc("join_room", { p_code: code, p_nickname: validName, p_session_token: getSessionToken() });
       if (rpcError) throw rpcError;
+      activeRoomCode.current = code;
       window.history.replaceState({}, "", `?sala=${code}`); await loadSnapshot(code);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível entrar na sala."); }
     finally { setBusy(false); }
   }
 
   async function saveProfileByEmail() {
-    if (!email.trim().toLowerCase().endsWith("@gmail.com")) { setError("Digite um endereço Gmail válido."); return; }
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[a-z0-9._%+-]+@gmail\.com$/i.test(normalizedEmail)) { setError("Digite um endereço Gmail válido."); return; }
     if (!remoteEnabled) { setNotice("O perfil com Gmail será liberado junto com o banco online."); return; }
-    const supabase = getSupabaseClient();
-    const { error: authError } = await supabase!.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: window.location.origin, data: { full_name: nickname.trim() || undefined } } });
-    if (authError) setError(authError.message); else setNotice("Enviamos um link seguro para seu Gmail. Abra-o para salvar o perfil.");
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const supabase = getSupabaseClient();
+      const { error: authError } = await supabase!.auth.signInWithOtp({ email: normalizedEmail, options: { emailRedirectTo: window.location.origin, data: { full_name: nickname.trim() || undefined } } });
+      if (authError) setError(authError.message); else setNotice("Enviamos um link seguro para seu Gmail. Abra-o para salvar o perfil.");
+    } catch {
+      setError("Não foi possível enviar o link agora. Tente novamente em instantes.");
+    } finally { setBusy(false); }
   }
 
   async function callAction(name: string, extra: Record<string, unknown> = {}) {
-    if (!snapshot) return; setBusy(true); setError("");
+    if (!snapshot) return false; setBusy(true); setError("");
+    const actionRoomCode = snapshot.code;
     try {
       const supabase = getSupabaseClient();
-      const { error: rpcError } = await supabase!.rpc(name, { p_code: snapshot.code, p_session_token: getSessionToken(), ...extra });
-      if (rpcError) throw rpcError; await loadSnapshot(snapshot.code);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "A ação não foi concluída."); }
+      const { error: rpcError } = await supabase!.rpc(name, { p_code: actionRoomCode, p_session_token: getSessionToken(), ...extra });
+      if (rpcError) throw rpcError;
+      if (activeRoomCode.current !== actionRoomCode) return false;
+      await loadSnapshot(actionRoomCode); return true;
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "A ação não foi concluída."); return false; }
     finally { setBusy(false); }
   }
 
@@ -291,9 +380,9 @@ export default function Home() {
       const shuffled = [...snapshot.players].sort(() => Math.random() - .5);
       const impostors = shuffled.slice(0, snapshot.impostorCount).map((player) => player.id);
       const meIsImpostor = impostors.includes(me?.id ?? "");
-      setRoleInfo({ role: meIsImpostor ? "impostor" : "player", word: meIsImpostor ? null : "Coxinha", category: "comidas" });
+      setRoleInfo({ role: meIsImpostor ? "impostor" : "player", word: meIsImpostor ? null : "Coxinha", category: "comidas", roomId: snapshot.roomId, roundNumber: snapshot.roundNumber + 1 });
       setRoleVisible(false);
-      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0 });
+      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length, roundPlayerCount: snapshot.players.length });
       return;
     }
     setRoleInfo(null); setRoleVisible(false); await callAction("start_round");
@@ -307,26 +396,40 @@ export default function Home() {
       else if (snapshot.phase === "voting") {
         const eliminated = roleInfo?.role === "impostor" ? [me?.id ?? "me"] : [selectedVote ?? snapshot.players[1].id];
         const caught = snapshot.impostorPlayerIds.every((id) => eliminated.includes(id));
-        setSnapshot({ ...snapshot, phase: "results", eliminatedPlayerIds: eliminated, revealedWord: "Coxinha", winner: caught ? "group" : "impostor", voteCount: snapshot.players.length });
+        setSnapshot({ ...snapshot, phase: "results", eliminatedPlayerIds: eliminated, revealedWord: "Coxinha", winner: caught ? "group" : "impostor", voteCount: snapshot.players.length, hasVoted: true });
       } else {
         setRoleInfo(null); setRoleVisible(false); setSelectedVote(null);
         setSnapshot({ ...snapshot, phase: "lobby", phaseEndsAt: null, players: snapshot.players.map((player) => ({ ...player, isReady: !player.isMe })) });
       }
       return;
     }
-    await callAction("advance_phase");
+    if (snapshot.phase === "reveal") setRoleVisible(false);
+    await callAction("advance_phase", { p_expected_phase: snapshot.phase, p_expected_round: snapshot.roundNumber });
   }
 
   async function castVote() {
     if (!selectedVote || !snapshot) return;
-    if (demoMode) { setSnapshot({ ...snapshot, voteCount: snapshot.voteCount + 1 }); setNotice("Voto confirmado e mantido em segredo."); return; }
-    await callAction("cast_vote", { p_target_player_id: selectedVote }); setNotice("Voto confirmado e mantido em segredo.");
+    if (demoMode) { setSnapshot({ ...snapshot, voteCount: snapshot.voteCount + 1, hasVoted: true }); setNotice("Voto confirmado e mantido em segredo."); return; }
+    const succeeded = await callAction("cast_vote", { p_target_player_id: selectedVote });
+    if (succeeded) setNotice("Voto confirmado e mantido em segredo.");
+  }
+
+  async function toggleRoleCard() {
+    if (!snapshot || !currentRoleInfo) return;
+    const revealing = !roleVisible;
+    setRoleVisible(revealing);
+    if (!revealing || snapshot.phase !== "reveal" || demoMode) return;
+    await callAction("acknowledge_role", { p_expected_round: snapshot.roundNumber });
   }
 
   async function copyInvite() {
     if (!snapshot) return;
-    await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?sala=${snapshot.code}`);
-    setNotice("Link da sala copiado!");
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?sala=${snapshot.code}`);
+      setNotice("Link da sala copiado!");
+    } catch {
+      setError("Não foi possível copiar automaticamente. Selecione o código da sala e envie aos amigos.");
+    }
   }
 
   function acceptSuggestion() {
@@ -341,19 +444,28 @@ export default function Home() {
     setShowSuggestion(true);
   }
 
-  function leaveRoom() {
+  async function leaveRoom() {
+    const leavingSnapshot = snapshot;
+    activeRoomCode.current = null;
+    latestSnapshotRequest.current += 1;
+    latestRoleRequest.current += 1;
+    lastSnapshotPhase.current = null;
     setSnapshot(null); setRoleInfo(null); setRoleVisible(false); setSelectedVote(null); setDemoMode(false); setNotice(""); setError("");
     window.history.replaceState({}, "", window.location.pathname);
+    if (leavingSnapshot && remoteEnabled && !demoMode) {
+      const supabase = getSupabaseClient();
+      await supabase?.rpc("leave_room", { p_code: leavingSnapshot.code, p_session_token: getSessionToken() });
+    }
   }
 
   return (
     <main className="app-shell">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
-        <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><img src="/mascote-na-miuda.png" alt="" /><span>Na Miúda!</span></button>
+        <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><Image src="/mascote-na-miuda.png" width={52} height={52} priority alt="" /><span>Na Miúda!</span></button>
         <div className="topbar-actions">
           <button className="rules-button" onClick={() => setShowRules(true)}>Como jogar</button>
-          <ThemeSwitch value={theme} onChange={setTheme} />
+          <ThemeSwitch value={theme} onChange={(value) => { setTheme(value); void updateProfile({ preferred_theme: value }); }} />
           {snapshot && <button className="ghost-button compact" onClick={leaveRoom}>Sair</button>}
         </div>
       </header>
@@ -391,9 +503,9 @@ export default function Home() {
 
             <button className="primary-button" disabled={busy} onClick={createRoom}><span>＋</span> {busy ? "Preparando..." : "Criar sala e convidar"}</button>
             <div className="divider"><span>ou entre com um código</span></div>
-            <div className="join-row"><input className="code-input" value={joinCode} maxLength={6} onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="CÓDIGO" aria-label="Código da sala" /><button className="secondary-button" disabled={busy} onClick={joinRoom}>Entrar →</button></div>
-            <div className="profile-save"><div className="profile-save-copy"><span>G</span><div><strong>Salvar meu perfil com Gmail</strong><small>Nome, tema e estatísticas ficam guardados</small></div></div><div className="profile-save-row"><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="seunome@gmail.com" aria-label="Seu Gmail" /><button onClick={saveProfileByEmail}>Salvar</button></div></div>
-            {error && <p className="form-message error">{error}</p>}{notice && <p className="form-message success">{notice}</p>}
+            <div className="join-row"><input className="code-input" value={joinCode} maxLength={6} onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, ""))} placeholder="CÓDIGO" aria-label="Código da sala" /><button className="secondary-button" disabled={busy} onClick={joinRoom}>Entrar →</button></div>
+            <div className="profile-save"><div className="profile-save-copy"><span>G</span><div><strong>Salvar meu perfil com Gmail</strong><small>Nome, tema e estatísticas ficam guardados</small></div></div><div className="profile-save-row"><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="seunome@gmail.com" aria-label="Seu Gmail" /><button disabled={busy} onClick={saveProfileByEmail}>{busy ? "Enviando..." : "Salvar"}</button></div></div>
+            {error && <p className="form-message error" role="alert">{error}</p>}{notice && <p className="form-message success" role="status">{notice}</p>}
             {!remoteEnabled && <p className="demo-note">A versão aberta agora usa jogadores simulados para você testar uma rodada completa.</p>}
           </section>
 
@@ -410,27 +522,28 @@ export default function Home() {
             <section className="main-panel panel">
               {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
-                <section className="phase-content centered-phase"><div className="phase-icon">{roleVisible ? roleInfo?.role === "impostor" ? "🎭" : "🔐" : "👁️"}</div><span className="micro-label">Só você pode ver</span><h3>{roleVisible ? roleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
-                  <button className={`role-card ${roleVisible ? "revealed" : ""}`} onClick={() => setRoleVisible((value) => !value)}>{!roleVisible ? <><strong>Toque para revelar</strong><small>Proteja a tela dos curiosos</small></> : roleInfo?.role === "impostor" ? <><strong>IMPOSTOR</strong><small>Categoria: {selectedCategory.label}. Escute as pistas e disfarce.</small></> : <><strong>{roleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}</button>
-                  {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy} onClick={advancePhase}>Todos viram? Começar pistas →</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
+                <section className="phase-content centered-phase"><div className="phase-icon">{roleVisible ? currentRoleInfo?.role === "impostor" ? "🎭" : "🔐" : "👁️"}</div><span className="micro-label">Só você pode ver</span><h3>{roleVisible ? currentRoleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
+                  <button className={`role-card ${roleVisible ? "revealed" : ""}`} disabled={!currentRoleInfo || busy} onClick={toggleRoleCard}>{!roleVisible ? <><strong>{currentRoleInfo ? "Toque para revelar" : "Sorteando seu papel..."}</strong><small>Proteja a tela dos curiosos</small></> : currentRoleInfo?.role === "impostor" ? <><strong>IMPOSTOR</strong><small>Categoria: {roleCategory.label}. Escute as pistas e disfarce.</small></> : <><strong>{currentRoleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}</button>
+                  <p className="seen-progress">{snapshot.rolesSeenCount}/{snapshot.roundPlayerCount} viram o papel</p>
+                  {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas →</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
                 </section>
               )}
               {snapshot.phase === "discussion" && (
-                <section className="phase-content centered-phase"><div className="timer-ring"><strong>{formatTime(secondsLeft ?? snapshot.discussionSeconds)}</strong><span>para conversar</span></div><span className="micro-label">Uma pista por pessoa</span><h3>Fale sem entregar o segredo</h3><p className="phase-description">A ordem é sorteada a cada rodada. Sigam a lista da sala e depois debatam quem parece estar blefando.</p><div className="tip-box"><span>💡</span><p><strong>Dica rápida</strong> Uma boa pista prova que você conhece a palavra, mas não ajuda o impostor a descobri-la.</p></div>{isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Abrir votação →</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>}</section>
+                <section className="phase-content centered-phase"><div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? snapshot.discussionSeconds)}</strong><span>{secondsLeft === 0 ? "tempo encerrado" : "para conversar"}</span></div><span className="micro-label">Uma pista por pessoa</span><h3>{secondsLeft === 0 ? "Tempo! Hora de votar" : "Fale sem entregar o segredo"}</h3><p className="phase-description">A ordem é sorteada a cada rodada. Sigam a lista da sala e depois debatam quem parece estar blefando.</p><div className="tip-box"><span>💡</span><p><strong>Dica rápida</strong> Uma boa pista prova que você conhece a palavra, mas não ajuda o impostor a descobri-la.</p></div><div className="secret-recheck"><button className="ghost-button" disabled={!currentRoleInfo} onClick={() => setRoleVisible((value) => !value)}>{roleVisible ? "Ocultar meu segredo" : "Rever meu segredo"}</button>{roleVisible && currentRoleInfo && <div><small>{currentRoleInfo.role === "impostor" ? `Impostor • ${roleCategory.label}` : "Sua palavra"}</small><strong>{currentRoleInfo.role === "impostor" ? "IMPOSTOR" : currentRoleInfo.word}</strong></div>}</div>{isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Abrir votação →</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>}</section>
               )}
               {snapshot.phase === "voting" && (
-                <section className="phase-content"><span className="micro-label">Escolha sem contar</span><h3>Quem está na miúda?</h3><p className="phase-description vote-copy">Seu voto é secreto e não pode ser trocado depois da confirmação.</p><div className="vote-grid">{snapshot.players.filter((player) => !player.isMe).map((player) => <button key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} onClick={() => setSelectedVote(player.id)}><Avatar name={player.nickname} /><span>{player.nickname}</span><i>{selectedVote === player.id ? "✓" : ""}</i></button>)}</div><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy} onClick={castVote}>Confirmar meu voto</button>{isHost && <button className="ghost-button" disabled={busy || snapshot.voteCount < snapshot.players.length && !demoMode} onClick={advancePhase}>Revelar resultado</button>}</div><p className="vote-progress">{snapshot.voteCount} de {snapshot.players.length} votos confirmados</p></section>
+                <section className="phase-content"><span className="micro-label">Escolha sem contar</span><h3>Quem está na miúda?</h3><p className="phase-description vote-copy">Seu voto é secreto e não pode ser trocado depois da confirmação.</p><div className="vote-grid">{snapshot.players.filter((player) => !player.isMe).map((player) => <button key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-pressed={selectedVote === player.id} onClick={() => setSelectedVote(player.id)}><Avatar name={player.nickname} /><span>{player.nickname}</span><i>{selectedVote === player.id ? "✓" : ""}</i></button>)}</div><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy || snapshot.hasVoted} onClick={castVote}>{snapshot.hasVoted ? "Voto confirmado ✓" : "Confirmar meu voto"}</button>{isHost && <button className="ghost-button" disabled={busy || snapshot.voteCount < snapshot.eligibleVoterCount && secondsLeft !== 0 && !demoMode} onClick={advancePhase}>Revelar resultado</button>}</div><p className="vote-progress">{snapshot.voteCount} de {snapshot.eligibleVoterCount} votos confirmados{secondsLeft !== null ? ` • encerra em ${formatTime(secondsLeft)}` : ""}</p></section>
               )}
               {snapshot.phase === "results" && <Results snapshot={snapshot} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
             </section>
 
-            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => <div className="player-row" key={player.id}><div className="player-order">{index + 1}</div><Avatar name={player.nickname} /><div className="player-name"><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{player.isHost ? "Anfitrião" : player.isReady ? "Pronto para jogar" : "Se preparando"}</small></div><div className={`status-dot ${player.isOnline ? "online" : ""}`} />{snapshot.phase === "results" && <b className="score">{player.score} pt</b>}</div>)}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
+            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => <div className="player-row" key={player.id}><div className="player-order">{index + 1}</div><Avatar name={player.nickname} /><div className="player-name"><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className={`status-dot ${player.isOnline ? "online" : ""}`} />{snapshot.phase === "results" && <b className="score">{player.score} pt</b>}</div>)}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
           </div>
-          {(error || notice) && <div className={`toast ${error ? "error" : "success"}`}>{error || notice}<button onClick={() => { setError(""); setNotice(""); }}>×</button></div>}
+          {(error || notice) && <div className={`toast ${error ? "error" : "success"}`} role={error ? "alert" : "status"} aria-live="polite">{error || notice}<button aria-label="Fechar aviso" onClick={() => { setError(""); setNotice(""); }}>×</button></div>}
         </div>
       )}
 
-      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+      {showRules && <RulesModal onClose={closeRules} />}
       <footer><span>Na Miúda! • uma brincadeira entre amigos</span><span>Use WhatsApp, Discord ou sua chamada preferida para conversar.</span></footer>
     </main>
   );
@@ -438,23 +551,34 @@ export default function Home() {
 
 function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: ThemeMode) => void }) {
   const options: Array<{ value: ThemeMode; label: string; icon: string }> = [{ value: "system", label: "Sistema", icon: "◐" }, { value: "light", label: "Claro", icon: "☀" }, { value: "dark", label: "Escuro", icon: "☾" }];
-  return <label className="theme-switch" title="Tema"><span>{options.find((item) => item.value === value)?.icon}</span><select value={value} onChange={(event) => onChange(event.target.value as ThemeMode)} aria-label="Tema do site">{options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>;
+  const current = options.findIndex((item) => item.value === value);
+  const selected = options[current];
+  return <div className="theme-switch" title={`Tema: ${selected.label}`}><span>{selected.icon}</span><button className="theme-cycle" onClick={() => onChange(options[(current + 1) % options.length].value)} aria-label={`Tema atual: ${selected.label}. Toque para trocar`}>{selected.icon}</button><select value={value} onChange={(event) => onChange(event.target.value as ThemeMode)} aria-label="Tema do site">{options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></div>;
 }
 
 function Lobby({ snapshot, me, readyCount, selectedCategory, toggleReady, startRound, busy }: { snapshot: Snapshot; me?: Player; readyCount: number; selectedCategory: (typeof categories)[number]; toggleReady: () => void; startRound: () => void; busy: boolean }) {
-  const canStart = snapshot.players.length >= 3 && readyCount === snapshot.players.length;
-  return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>Prepare a rodada</h3><p>Compartilhe o convite e marque “Estou pronto”. A palavra, os impostores e a ordem serão sorteados no servidor.</p></div><div className="settings-card"><div className="settings-title"><strong>Configurações da partida</strong><span>Escolhidas pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">{selectedCategory.icon}</span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">👥</span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">⏱️</span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para pistas e conversa</small></div></div><span className="setting-value">Por rodada</span></div></div><div className="ready-box"><div><strong>{readyCount}/{snapshot.players.length} prontos</strong><span>{snapshot.players.length < 3 ? `Faltam ${3 - snapshot.players.length} jogadores` : canStart ? "Todo mundo pronto!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, readyCount / snapshot.players.length * 100)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? "✓ Estou pronto" : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar →"}</button>}</div></section>;
+  const onlinePlayers = snapshot.players.filter((player) => player.isOnline);
+  const canStart = onlinePlayers.length >= 3 && readyCount === onlinePlayers.length;
+  return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>Prepare a rodada</h3><p>Compartilhe o convite e marque “Estou pronto”. A palavra, os impostores e a ordem serão sorteados no servidor.</p></div><div className="settings-card"><div className="settings-title"><strong>Configurações da partida</strong><span>Escolhidas pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">{selectedCategory.icon}</span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">👥</span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">⏱️</span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para pistas e conversa</small></div></div><span className="setting-value">Por rodada</span></div></div><div className="ready-box"><div><strong>{readyCount}/{onlinePlayers.length} online prontos</strong><span>{onlinePlayers.length < 3 ? `Faltam ${3 - onlinePlayers.length} jogadores` : canStart ? "Todo mundo pronto!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, onlinePlayers.length ? readyCount / onlinePlayers.length * 100 : 8)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? "✓ Estou pronto" : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar →"}</button>}</div></section>;
 }
 
 function Results({ snapshot, isHost, advancePhase, busy }: { snapshot: Snapshot; isHost: boolean; advancePhase: () => void; busy: boolean }) {
   const eliminated = snapshot.players.filter((player) => snapshot.eliminatedPlayerIds.includes(player.id));
   const impostors = snapshot.players.filter((player) => snapshot.impostorPlayerIds.includes(player.id));
   const groupWon = snapshot.winner === "group";
-  return <section className="phase-content centered-phase results-content"><div className={`result-burst ${groupWon ? "caught" : "escaped"}`}>{groupWon ? "🔎" : "🎭"}</div><span className="micro-label">A verdade apareceu</span><h3>{groupWon ? "Impostor descoberto!" : "O impostor escapou!"}</h3><p className="phase-description">{eliminated.length ? eliminated.map((player) => player.nickname).join(" e ") : "O mais votado"} recebeu mais votos. {impostors.length > 1 ? "Os impostores eram" : "O impostor era"} <strong>{impostors.map((player) => player.nickname).join(" e ") || "..."}</strong>.</p><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div><div className="points-note">{groupWon ? "O grupo marca 1 ponto." : "Cada impostor marca 2 pontos."}</div>{isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Preparar próxima rodada →</button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}</section>;
+  const plural = impostors.length > 1;
+  return <section className="phase-content centered-phase results-content"><div className={`result-burst ${groupWon ? "caught" : "escaped"}`}>{groupWon ? "🔎" : "🎭"}</div><span className="micro-label">A verdade apareceu</span><h3>{groupWon ? plural ? "Impostores descobertos!" : "Impostor descoberto!" : plural ? "Os impostores escaparam!" : "O impostor escapou!"}</h3><p className="phase-description">{eliminated.length ? eliminated.map((player) => player.nickname).join(" e ") : "O mais votado"} {eliminated.length > 1 ? "ficaram" : "ficou"} entre os mais votados. {plural ? "Os impostores eram" : "O impostor era"} <strong>{impostors.map((player) => player.nickname).join(" e ") || "..."}</strong>.</p><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div><div className="points-note">{groupWon ? "Cada inocente marca 1 ponto." : "Cada impostor marca 2 pontos."}</div>{isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Preparar próxima rodada →</button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}</section>;
 }
 
 function RulesModal({ onClose }: { onClose: () => void }) {
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja sua palavra.</b><span>Os jogadores recebem a mesma palavra; os impostores recebem apenas o assunto.</span></li><li><b>Dê uma pista.</b><span>Fale algo relacionado sem entregar a resposta.</span></li><li><b>Converse e vote.</b><span>Descubra quem improvisou e revele o resultado.</span></li></ol><p>Quando há vários impostores, o grupo precisa encontrar todos. A cada nova rodada, papéis e ordem são sorteados novamente.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
+  const closeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeButton.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja sua palavra.</b><span>Os jogadores recebem a mesma palavra; os impostores recebem apenas o assunto.</span></li><li><b>Dê uma pista.</b><span>Fale algo relacionado sem entregar a resposta.</span></li><li><b>Converse e vote.</b><span>Descubra quem improvisou e revele o resultado.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Papéis e ordem são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
 }
 
 function Avatar({ name }: { name: string }) {

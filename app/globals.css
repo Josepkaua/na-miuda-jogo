@@ -52,6 +52,15 @@ html { min-height: 100%; background: var(--cream); }
 body { margin: 0; min-height: 100%; background: var(--cream); color: var(--ink); font-family: "Avenir Next", "Segoe UI", Arial, sans-serif; }
 button, input, select { font: inherit; }
 button { color: inherit; }
+select { color-scheme: light; }
+select option { background: #fffdf6; color: #082e34; }
+:root[data-theme="dark"] select { color-scheme: dark; }
+:root[data-theme="dark"] select option { background: #0d2b31; color: #eaf4ed; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) select { color-scheme: dark; }
+  :root:not([data-theme="light"]) select option { background: #0d2b31; color: #eaf4ed; }
+}
 
 .app-shell { min-height: 100vh; position: relative; overflow: hidden; padding: 0 5vw; isolation: isolate; }
 .app-shell::before { content: ""; position: fixed; inset: 0; z-index: -3; opacity: .35; background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(to bottom, black, transparent 72%); }
@@ -66,6 +75,7 @@ button { color: inherit; }
 .rules-button { border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 800; cursor: pointer; }
 .theme-switch { display: flex; align-items: center; gap: 7px; height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 0 9px 0 12px; background: color-mix(in srgb, var(--paper) 80%, transparent); }
 .theme-switch > span { color: var(--muted); }
+.theme-cycle { display: none; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
 .theme-switch select { width: 76px; padding: 0; border: 0; background: transparent; color: var(--ink); font-size: 10px; font-weight: 800; outline: none; }
 
 .landing-wrap { width: min(1180px, 100%); margin: 0 auto; padding: 42px 0 70px; display: grid; grid-template-columns: 1.02fr .98fr; column-gap: 7vw; align-items: center; }
@@ -118,7 +128,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .suggestion-card strong { font-size: 10px; }
 .suggestion-card p { margin: 3px 0 7px; color: var(--muted); font-size: 9px; line-height: 1.45; }
 .suggestion-card div div { display: flex; gap: 7px; }
-.suggestion-card button { border: 0; padding: 0; background: transparent; color: var(--success); font-size: 9px; font-weight: 900; cursor: pointer; }
+.suggestion-card button { min-height: 30px; border: 0; padding: 5px 3px; background: transparent; color: var(--success); font-size: 9px; font-weight: 900; cursor: pointer; }
 .suggestion-card button + button { color: var(--muted); }
 .profile-save { margin-top: 13px; padding: 11px; border: 1px solid var(--line); border-radius: 13px; }
 .profile-save-copy { display: flex; align-items: center; gap: 10px; }
@@ -210,14 +220,22 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .role-card.revealed { background: #073d45; color: white; border-style: solid; border-color: #073d45; box-shadow: 0 18px 50px rgba(6,44,50,.2); }
 .role-card.revealed strong { color: var(--lime-bright); font-size: clamp(30px, 5vw, 48px); }
 .role-card.revealed small { color: rgba(255,255,255,.72); }
+.seen-progress { margin: 11px 0 -12px; color: var(--muted); font-size: 10px; font-weight: 800; }
 .timer-ring { width: 160px; height: 160px; border: 13px solid color-mix(in srgb, var(--muted) 20%, transparent); border-top-color: var(--lime); border-right-color: var(--lime); border-radius: 50%; display: grid; place-content: center; margin-bottom: 23px; transform: rotate(5deg); }
 .timer-ring strong, .timer-ring span { transform: rotate(-5deg); }
 .timer-ring strong { font-size: 35px; letter-spacing: -.04em; }
 .timer-ring span { color: var(--muted); font-size: 10px; font-weight: 800; }
+.timer-ring.expired { border-color: color-mix(in srgb, var(--danger) 38%, var(--line)); border-top-color: var(--danger); border-right-color: var(--danger); }
+.timer-ring.expired strong { color: var(--danger); }
 .tip-box { max-width: 560px; display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px 16px; background: color-mix(in srgb, var(--lime) 9%, var(--paper)); border: 1px solid color-mix(in srgb, var(--lime) 35%, var(--line)); border-radius: 14px; }
 .tip-box > span { font-size: 24px; }
 .tip-box p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .tip-box strong { display: block; color: var(--ink); }
+.secret-recheck { width: min(360px, 100%); margin-top: 14px; }
+.secret-recheck .ghost-button { width: 100%; padding: 10px 14px; font-size: 10px; }
+.secret-recheck > div { display: flex; flex-direction: column; gap: 3px; margin-top: 7px; padding: 10px 13px; border-radius: 12px; background: #073d45; color: white; }
+.secret-recheck small { color: rgba(255,255,255,.65); font-size: 8px; text-transform: uppercase; letter-spacing: .1em; }
+.secret-recheck strong { color: var(--lime-bright); font-size: 15px; }
 .vote-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; margin-top: 25px; }
 .vote-card { display: flex; align-items: center; gap: 12px; padding: 13px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 15px; cursor: pointer; }
 .vote-card span:nth-child(2) { flex: 1; text-align: left; font-weight: 800; font-size: 13px; }
@@ -250,6 +268,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .rules-modal > p { color: var(--muted); font-size: 11px; line-height: 1.55; }
 .rules-modal .primary-button { box-shadow: none; }
 .modal-close { position: absolute; right: 17px; top: 14px; border: 0; background: transparent; color: var(--muted); font-size: 25px; cursor: pointer; }
+.modal-close:focus-visible { outline: 3px solid color-mix(in srgb, var(--deep-2) 45%, transparent); outline-offset: 3px; border-radius: 8px; }
 
 footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; font-weight: 700; }
 
@@ -274,8 +293,9 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .topbar { min-height: 76px; }
   .brand { font-size: 19px; }
   .brand img { width: 43px; height: 43px; }
-  .rules-button, .theme-switch select { display: none; }
+  .theme-switch select, .theme-switch > span { display: none; }
   .theme-switch { width: 39px; justify-content: center; padding: 0; }
+  .theme-cycle { width: 100%; height: 100%; display: grid; place-items: center; }
   .hero-copy h1 { font-size: 50px; }
   .hero-mascot { width: 112px; height: 112px; margin-top: 0; }
   .hero-mascot > span { width: 29px; height: 29px; bottom: 10px; font-size: 15px; border-width: 2px; }
