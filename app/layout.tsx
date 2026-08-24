@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./discussion-refinement.css";
+import GamePhaseGuard from "./game-phase-guard";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -47,7 +49,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        {children}
+        <GamePhaseGuard />
+      </body>
     </html>
   );
 }
