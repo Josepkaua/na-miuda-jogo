@@ -1,23 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+
+function subscribeOnlineStatus(onStoreChange: () => void) {
+  window.addEventListener("online", onStoreChange);
+  window.addEventListener("offline", onStoreChange);
+  return () => {
+    window.removeEventListener("online", onStoreChange);
+    window.removeEventListener("offline", onStoreChange);
+  };
+}
+
+function getOnlineSnapshot() {
+  return navigator.onLine;
+}
+
+function getServerOnlineSnapshot() {
+  return true;
+}
 
 export default function ConnectionStatus() {
-  const [online, setOnline] = useState(true);
+  const online = useSyncExternalStore(subscribeOnlineStatus, getOnlineSnapshot, getServerOnlineSnapshot);
   const [restored, setRestored] = useState(false);
   const restoreTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    setOnline(navigator.onLine);
-
     const handleOffline = () => {
       if (restoreTimer.current !== null) window.clearTimeout(restoreTimer.current);
       setRestored(false);
-      setOnline(false);
     };
 
     const handleOnline = () => {
-      setOnline(true);
       setRestored(true);
       if (restoreTimer.current !== null) window.clearTimeout(restoreTimer.current);
       restoreTimer.current = window.setTimeout(() => setRestored(false), 2600);
