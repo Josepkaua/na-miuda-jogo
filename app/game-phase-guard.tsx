@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type CinematicKind = "neutral" | "vote" | "group" | "impostor" | "role-player" | "role-impostor";
 type CinematicState = {
@@ -192,15 +192,14 @@ export default function GamePhaseGuard() {
   const actionLocks = useRef(new Set<string>());
   const autoAdvanceLocks = useRef(new Set<string>());
   const cinematicLocks = useRef(new Set<string>());
-  const transitionTimer = useRef<number | null>(null);
   const cinematicTimer = useRef<number | null>(null);
 
-  const showCinematic = (next: Exclude<CinematicState, null>, duration: number) => {
+  const showCinematic = useCallback((next: Exclude<CinematicState, null>, duration: number) => {
     setCinematic(next);
     if (cinematicTimer.current !== null) window.clearTimeout(cinematicTimer.current);
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     cinematicTimer.current = window.setTimeout(() => setCinematic(null), reducedMotion ? Math.min(duration, 850) : duration);
-  };
+  }, []);
 
   useEffect(() => {
     const guardedSelectors = [
@@ -364,15 +363,14 @@ export default function GamePhaseGuard() {
 
     return () => {
       observer.disconnect();
-      if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
       if (cinematicTimer.current !== null) window.clearTimeout(cinematicTimer.current);
     };
-  }, []);
+  }, [showCinematic]);
 
   return (
     <>
       {cinematic && (
-        <div className={`cinematic-transition cinematic-${cinematic.kind}`} role="status" aria-live="assertive">
+        <div className={`cinematic-transition cinematic-${cinematic.kind}`} role="status" aria-live="assertive" aria-atomic="true">
           <div className="cinematic-grid" aria-hidden="true" />
           <div className="cinematic-shockwave" aria-hidden="true" />
           <div className="cinematic-particles" aria-hidden="true">
