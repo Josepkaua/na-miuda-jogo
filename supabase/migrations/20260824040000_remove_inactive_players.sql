@@ -181,6 +181,8 @@ begin
     update public.rooms set discussion_stage = 'free_chat', discussion_turn_order = null,
       phase_ends_at = now() + interval '1 minute', updated_at = now()
     where id = target_room.id;
+    delete from public.discussion_votes
+      where round_id = target_room.current_round_id;
   elsif voting_count > eligible_count / 2 or vote_count >= eligible_count then
     outcome := 'voting';
     update public.rooms set phase = 'voting', discussion_stage = 'resolved', discussion_turn_order = null,
