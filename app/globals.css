@@ -62,7 +62,7 @@ select option { background: #fffdf6; color: #082e34; }
   :root:not([data-theme="light"]) select option { background: #0d2b31; color: #eaf4ed; }
 }
 
-.app-shell { min-height: 100vh; position: relative; overflow: hidden; padding: 0 5vw; isolation: isolate; }
+.app-shell { min-height: 100vh; position: relative; overflow-x: clip; overflow-y: visible; padding: 0 5vw; isolation: isolate; }
 .app-shell::before { content: ""; position: fixed; inset: 0; z-index: -3; opacity: .35; background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(to bottom, black, transparent 72%); }
 .ambient { position: fixed; border-radius: 999px; filter: blur(2px); z-index: -2; pointer-events: none; }
 .ambient-one { width: 520px; height: 520px; right: -180px; top: 80px; background: rgba(200,244,61,.25); animation: ambient-drift-one 13s ease-in-out infinite alternate; }
@@ -371,9 +371,16 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .vote-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
 .vote-actions .primary-button { margin: 0; }
 .vote-progress { text-align: center; color: var(--muted); font-size: 10px; font-weight: 800; margin-top: 13px; }
-.result-burst { width: 100px; height: 100px; display: grid; place-items: center; border-radius: 31px; font-size: 49px; margin-bottom: 20px; transform: rotate(-5deg); }
+.result-burst { width: 100px; height: 100px; display: grid; place-items: center; border-radius: 31px; font-size: 49px; margin-bottom: 20px; transform: rotate(-5deg); animation: result-pop .55s cubic-bezier(.18,.9,.25,1.28) both; }
+@keyframes result-pop { from { opacity: 0; transform: rotate(-14deg) scale(.55); } to { opacity: 1; transform: rotate(-5deg) scale(1); } }
 .result-burst.caught { background: color-mix(in srgb, var(--lime) 20%, var(--paper)); border: 1px solid #aeca65; }
 .result-burst.escaped { background: color-mix(in srgb, #76d7ff 15%, var(--paper)); border: 1px solid #6eabb4; }
+.impostor-reveal-card { width: min(430px, 100%); margin-bottom: 11px; padding: 15px; border: 1px solid color-mix(in srgb, #ff7bb0 40%, var(--line)); border-radius: 18px; background: color-mix(in srgb, #ff7bb0 8%, var(--paper)); }
+.impostor-reveal-card > small { display: block; margin-bottom: 10px; color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+.impostor-reveal-card > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.impostor-reveal-card > div > span { display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px 7px 7px; border-radius: 13px; background: var(--paper); box-shadow: 0 5px 14px rgba(6,44,50,.08); }
+.impostor-reveal-card .avatar { width: 31px; height: 31px; border-radius: 10px; font-size: 11px; }
+.impostor-reveal-card strong { font-size: 13px; }
 .secret-reveal { display: flex; flex-direction: column; align-items: center; width: min(390px, 100%); padding: 18px; border-radius: 18px; background: #073d45; color: white; }
 .secret-reveal small { opacity: .65; text-transform: uppercase; letter-spacing: .11em; font-size: 9px; }
 .secret-reveal strong { color: var(--lime-bright); margin-top: 3px; font-size: 31px; }
@@ -398,7 +405,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; font-weight: 700; }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
   .app-shell { padding: 0 22px; }
   .landing-wrap { grid-template-columns: 1fr; padding-top: 12px; }
   .hero-copy { text-align: center; }
@@ -420,7 +427,7 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .chat-focus .main-panel, .chat-focus .players-panel { overflow: visible; }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-device-width: 600px) {
   .app-shell { padding: 0 14px; }
   .topbar { min-height: 76px; }
   .brand { font-size: 19px; }
