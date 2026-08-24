@@ -1,0 +1,115 @@
+/* Corrige a grade do composer e mantém o feedback de digitação perto da conversa. */
+.chat-panel {
+  position: relative;
+}
+
+/* A regra antiga da discussão tinha mais especificidade e mantinha apenas duas colunas. */
+.chat-focus .chat-composer {
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+}
+
+.chat-focus .chat-composer > input {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.chat-focus .chat-composer > button[type="submit"] {
+  grid-column: 3;
+  grid-row: 1;
+  width: 48px;
+}
+
+.chat-focus .chat-emoji-tools,
+.chat-focus .chat-composer .emoji-trigger {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+}
+
+.chat-typing-indicator {
+  position: absolute;
+  z-index: 7;
+  left: 17px;
+  bottom: 69px;
+  min-height: 27px;
+  max-width: calc(100% - 34px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--lime) 26%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 96%, transparent);
+  color: var(--muted);
+  box-shadow: 0 7px 20px rgba(6, 44, 50, .09);
+  pointer-events: none;
+  animation: typing-indicator-arrive .18s ease-out both;
+}
+
+.chat-typing-indicator > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.chat-typing-indicator i {
+  width: 4px;
+  height: 4px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--success);
+  animation: typing-dot 1s ease-in-out infinite;
+}
+
+.chat-typing-indicator i:nth-of-type(2) { animation-delay: .13s; }
+.chat-typing-indicator i:nth-of-type(3) { animation-delay: .26s; }
+
+.chat-focus .chat-typing-indicator {
+  bottom: 81px;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0) scale(.82); opacity: .45; }
+  30% { transform: translateY(-3px) scale(1); opacity: 1; }
+}
+
+@keyframes typing-indicator-arrive {
+  from { opacity: 0; transform: translateY(4px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 600px), (max-device-width: 600px) {
+  .chat-focus .chat-composer {
+    grid-template-columns: 46px minmax(0, 1fr) 46px;
+  }
+
+  .chat-focus .chat-composer > button[type="submit"],
+  .chat-focus .chat-emoji-tools,
+  .chat-focus .chat-composer .emoji-trigger {
+    width: 46px;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .chat-typing-indicator {
+    left: 12px;
+    bottom: 68px;
+    max-width: calc(100% - 24px);
+  }
+
+  .chat-focus .chat-typing-indicator {
+    bottom: 75px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing-indicator,
+  .chat-typing-indicator i {
+    animation: none !important;
+  }
+}
