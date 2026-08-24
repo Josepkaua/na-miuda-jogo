@@ -17,10 +17,29 @@ function actionName(button: HTMLButtonElement) {
   return aria || button.textContent?.replace(/\s+/g, " ").trim() || "action";
 }
 
+function readVotingProgress() {
+  const progress = document.querySelector<HTMLElement>(".game-grid.phase-voting .vote-progress > span")?.textContent ?? "";
+  const match = progress.match(/(\d+)\s+de\s+(\d+)\s+votos confirmados/i);
+  const confirmed = match ? Number(match[1]) : 0;
+  const eligible = match ? Number(match[2]) : 0;
+  return {
+    confirmed,
+    eligible,
+    complete: eligible > 0 && confirmed >= eligible,
+    expired: /encerra em\s+00:00/i.test(progress),
+  };
+}
+
+function findRevealButton() {
+  return Array.from(document.querySelectorAll<HTMLButtonElement>(".game-grid.phase-voting .vote-actions button"))
+    .find((button) => /revelar resultado/i.test(button.textContent ?? "")) ?? null;
+}
+
 export default function GamePhaseGuard() {
   const [transitionMessage, setTransitionMessage] = useState("");
   const lastGameState = useRef<{ key: string; phase: string } | null>(null);
   const actionLocks = useRef(new Set<string>());
+  const autoAdvanceLocks = useRef(new Set<string>());
   const transitionTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -61,12 +80,14 @@ export default function GamePhaseGuard() {
       if (!current) {
         lastGameState.current = null;
         actionLocks.current.clear();
+        autoAdvanceLocks.current.clear();
         return;
       }
 
       const previous = lastGameState.current;
       if (previous && previous.key !== current.key) {
         actionLocks.current.clear();
+        autoAdvanceLocks.current.clear();
 
         const staleNoticeClose = document.querySelector<HTMLButtonElement>(".toast button[aria-label='Fechar aviso']");
         staleNoticeClose?.click();
@@ -75,12 +96,33 @@ export default function GamePhaseGuard() {
           setTransitionMessage("Tempo encerrado — abrindo a votação…");
           if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
           transitionTimer.current = window.setTimeout(() => setTransitionMessage(""), 3200);
+        } else if (previous.phase === "voting" && current.phase === "results") {
+          setTransitionMessage("Votos encerrados — revelando o resultado…");
+          if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+          transitionTimer.current = window.setTimeout(() => setTransitionMessage(""), 3200);
         } else {
           setTransitionMessage("");
         }
       }
 
       lastGameState.current = current;
+
+      if (current.phase === "voting") {
+        const voting = readVotingProgress();
+        const revealButton = findRevealButton();
+        const autoKey = `${current.key}:auto-reveal`;
+        if ((voting.complete || voting.expired) && revealButton && !revealButton.disabled && !autoAdvanceLocks.current.has(autoKey)) {
+          autoAdvanceLocks.current.add(autoKey);
+          setTransitionMessage(voting.complete ? "Todos votaram — revelando o resultado…" : "Tempo da votação encerrado — revelando o resultado…");
+          window.setTimeout(() => {
+            if (!revealButton.isConnected || revealButton.disabled) {
+              autoAdvanceLocks.current.delete(autoKey);
+              return;
+            }
+            revealButton.click();
+          }, 120);
+        }
+      }
     };
 
     inspect();
@@ -89,7 +131,8 @@ export default function GamePhaseGuard() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["class"],
+      characterData: true,
+      attributeFilter: ["class", "disabled"],
     });
 
     return () => {
