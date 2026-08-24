@@ -1,0 +1,50 @@
+.connection-status {
+  position: fixed;
+  z-index: 145;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 28px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper) 96%, transparent);
+  color: var(--ink);
+  box-shadow: 0 14px 34px rgba(3, 25, 30, .20);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: connection-status-in .26s cubic-bezier(.18,.82,.24,1.08) both;
+}
+.connection-status > span {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 1000;
+}
+.connection-status > div { min-width: 0; }
+.connection-status strong,
+.connection-status small { display: block; }
+.connection-status strong { font-size: 11px; }
+.connection-status small { margin-top: 2px; color: var(--muted); font-size: 8px; line-height: 1.35; }
+.connection-status.offline { border-color: color-mix(in srgb, var(--danger) 52%, var(--line)); }
+.connection-status.offline > span { background: color-mix(in srgb, var(--danger) 14%, var(--paper)); color: var(--danger); animation: reconnect-spin 1.3s linear infinite; }
+.connection-status.restored { border-color: color-mix(in srgb, var(--lime) 55%, var(--line)); }
+.connection-status.restored > span { background: color-mix(in srgb, var(--lime) 18%, var(--paper)); color: var(--success); }
+
+@keyframes connection-status-in {
+  from { opacity: 0; transform: translate(-50%, -8px) scale(.98); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes reconnect-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .connection-status,
+  .connection-status.offline > span { animation: none !important; }
+}
