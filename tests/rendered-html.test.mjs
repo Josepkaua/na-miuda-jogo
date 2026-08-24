@@ -93,13 +93,43 @@ test("keeps discussion chat-first and reopens the collective decision after more
   assert.match(guard, /readVotingProgress\(\)/);
   assert.match(guard, /voting\.complete \|\| voting\.expired/);
   assert.match(guard, /revealButton\.click\(\)/);
-  assert.match(guard, /Tempo encerrado — abrindo a votação…/);
-  assert.match(guard, /Todos votaram — revelando o resultado…/);
+  assert.match(guard, /HORA DE ACUSAR/);
+  assert.match(guard, /A EQUIPE VENCEU/);
+  assert.match(guard, /O IMPOSTOR VENCEU/);
+  assert.match(guard, /Todos votaram — calculando o resultado…/);
 
   assert.match(sql, /outcome := 'more_time'[\s\S]*phase_ends_at = now\(\) \+ interval '1 minute'[\s\S]*delete from public\.discussion_votes[\s\S]*round_id = target_room\.current_round_id/i);
   assert.doesNotMatch(page, /advance_discussion_turn|onAdvanceDiscussionTurn|turn-banner/);
   assert.match(page, /Mais tempo ou votação\?/);
   assert.match(page, /Chat livre — perguntem e respondam sem escrever a palavra secreta/);
+});
+
+test("uses cinematic transitions without sacrificing accessibility or mechanical feedback", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
+  const controller = await readFile(new URL("../app/game-motion-controller.tsx", import.meta.url), "utf8");
+  const cinematic = await readFile(new URL("../app/cinematic-transitions.css", import.meta.url), "utf8");
+  const polish = await readFile(new URL("../app/game-polish.css", import.meta.url), "utf8");
+
+  assert.match(layout, /cinematic-transitions\.css/);
+  assert.match(layout, /game-polish\.css/);
+  assert.match(layout, /<GameMotionController\s*\/>/);
+  assert.match(guard, /cinematic-role-impostor/);
+  assert.match(guard, /cinematic-role-player/);
+  assert.match(guard, /cinematic-group/);
+  assert.match(guard, /cinematic-impostor/);
+  assert.match(guard, /currentText === text/);
+  assert.match(controller, /syncDiscussionUrgency\(\)/);
+  assert.match(controller, /syncVotingUrgency\(\)/);
+  assert.match(controller, /Vote agora — Na Miúda!/);
+  assert.match(controller, /navigator\.vibrate/);
+  assert.match(cinematic, /\.timer-ring\.is-critical/);
+  assert.match(cinematic, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(polish, /\.vote-card\.selected/);
+  assert.match(polish, /\.ready-bar i::after/);
+  assert.match(polish, /\.discussion-decision/);
+  assert.match(polish, /\.cinematic-transition\s*\{[\s\S]*pointer-events:\s*auto;/);
+  assert.match(polish, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test("uses harder impostor hints and the 3-2-plus-1 scoring model", async () => {
