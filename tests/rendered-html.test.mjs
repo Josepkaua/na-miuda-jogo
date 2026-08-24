@@ -101,3 +101,20 @@ test("keeps discussion chat-first and reopens the collective decision after more
   assert.match(page, /Mais tempo ou votação\?/);
   assert.match(page, /Chat livre — perguntem e respondam sem escrever a palavra secreta/);
 });
+
+test("uses harder impostor hints and the 3-2-plus-1 scoring model", async () => {
+  const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
+  const sql = await readFile(new URL("../supabase/migrations/20260824041000_gameplay_scoring_and_hints.sql", import.meta.url), "utf8");
+
+  assert.match(guard, /const hardImpostorHints: Record<string, string\[]>/);
+  assert.match(guard, /syncHardImpostorHints\(\)/);
+  assert.match(guard, /Pense mais na ocasião e na experiência de comer/);
+  assert.match(guard, /Pode ser pessoa, lugar, regra, ação, competição/);
+  assert.doesNotMatch(guard, /É comum em lanches, festas e vitrines de padarias/);
+
+  assert.match(sql, /set impostor_hint = case category/i);
+  assert.match(sql, /set score = p\.score \+ 2[\s\S]*rr\.role = 'player'/i);
+  assert.match(sql, /set score = p\.score \+ 3[\s\S]*rr\.role = 'impostor'/i);
+  assert.match(sql, /set score = p\.score \+ 1[\s\S]*voter_role\.role = 'player'[\s\S]*v\.target_player_id = any\(impostors\)/i);
+  assert.match(sql, /awarded even if the group as a whole does not win/i);
+});
