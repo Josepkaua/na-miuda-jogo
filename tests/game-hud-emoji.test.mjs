@@ -36,3 +36,33 @@ test("adds an accessible emoji picker without changing chat transport", async ()
   assert.match(css, /\.emoji-menu/);
   assert.match(css, /\.emoji-grid/);
 });
+
+test("keeps the discussion composer wide and ready for continuous desktop typing", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const focus = await readFile(new URL("../app/chat-focus-presence.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/chat-focus-presence.css", import.meta.url), "utf8");
+
+  assert.match(layout, /chat-focus-presence\.css/);
+  assert.match(layout, /<ChatFocusPresence\s*\/>/);
+  assert.match(css, /\.chat-focus \.chat-composer\s*\{[\s\S]*grid-template-columns:\s*48px minmax\(0, 1fr\) 48px;/);
+  assert.match(css, /\.chat-focus \.chat-composer > input[\s\S]*min-width:\s*0;[\s\S]*width:\s*100%;/);
+  assert.match(focus, /matchMedia\("\(pointer: fine\)"\)/);
+  assert.match(focus, /input\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(focus, /document\.addEventListener\("keydown", onGlobalKeyDown, true\)/);
+  assert.match(focus, /attributeFilter:\s*\["disabled"\]/);
+});
+
+test("shows realtime animated typing presence without a database migration", async () => {
+  const presence = await readFile(new URL("../app/chat-focus-presence.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/chat-focus-presence.css", import.meta.url), "utf8");
+
+  assert.match(presence, /\.channel\(`na-miuda-typing-\$\{roomCode\}`/);
+  assert.match(presence, /event:\s*"typing"/);
+  assert.match(presence, /broadcast:\s*\{ self:\s*false \}/);
+  assert.match(presence, /está digitando/);
+  assert.match(presence, /1900/);
+  assert.match(css, /\.chat-typing-indicator/);
+  assert.match(css, /@keyframes typing-dot/);
+  assert.match(css, /\.chat-typing-indicator i:nth-of-type\(3\)/);
+  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/);
+});
