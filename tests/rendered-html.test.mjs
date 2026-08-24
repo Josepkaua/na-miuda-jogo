@@ -65,3 +65,33 @@ test("removes inactive players from server-side vote eligibility", async () => {
   assert.match(sql, /vote_total[\s\S]*p\.left_at is null[\s\S]*p\.last_seen_at > now\(\) - interval '75 seconds'/i);
   assert.match(sql, /host_player_id = replacement_host/i);
 });
+
+test("keeps discussion chat-first and reopens the collective decision after more time", async () => {
+  const css = await readFile(new URL("../app/discussion-refinement.css", import.meta.url), "utf8");
+  const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const sql = await readFile(new URL("../supabase/migrations/20260824040000_remove_inactive_players.sql", import.meta.url), "utf8");
+
+  assert.match(layout, /discussion-refinement\.css/);
+  assert.match(layout, /<GamePhaseGuard\s*\/>/);
+  assert.match(css, /\.game-grid\.chat-focus\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+292px;/s);
+  assert.match(css, /\.chat-focus \.main-panel\s*\{[^}]*overflow:\s*hidden;/s);
+  assert.match(css, /\.chat-focus \.players-panel\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s);
+  assert.match(css, /\.chat-focus \.player-list\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
+  assert.match(css, /\.chat-focus \.chat-messages\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
+  assert.match(css, /62svh/);
+  assert.match(css, /100dvh/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+
+  assert.match(guard, /actionLocks\s*=\s*useRef\(new Set<string>\(\)\)/);
+  assert.match(guard, /staleNoticeClose\?\.click\(\)/);
+  assert.match(guard, /previous\.phase === "discussion" && current\.phase === "voting"/);
+  assert.match(guard, /Tempo encerrado — abrindo a votação…/);
+
+  assert.match(sql, /outcome := 'more_time'[\s\S]*phase_ends_at = now\(\) \+ interval '1 minute'[\s\S]*delete from public\.discussion_votes[\s\S]*round_id = target_room\.current_round_id/i);
+  assert.doesNotMatch(page, /advance_discussion_turn|onAdvanceDiscussionTurn|turn-banner/);
+  assert.match(page, /Mais tempo ou votação\?/);
+  assert.match(page, /Chat livre — perguntem e respondam sem escrever a palavra secreta/);
+});
