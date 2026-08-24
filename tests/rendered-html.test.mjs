@@ -114,10 +114,11 @@ test("uses cinematic transitions without sacrificing accessibility or mechanical
   assert.match(layout, /cinematic-transitions\.css/);
   assert.match(layout, /game-polish\.css/);
   assert.match(layout, /<GameMotionController\s*\/>/);
-  assert.match(guard, /cinematic-role-impostor/);
-  assert.match(guard, /cinematic-role-player/);
-  assert.match(guard, /cinematic-group/);
-  assert.match(guard, /cinematic-impostor/);
+  assert.match(guard, /kind:\s*"role-impostor"/);
+  assert.match(guard, /kind:\s*"role-player"/);
+  assert.match(guard, /kind:\s*"group"/);
+  assert.match(guard, /kind:\s*"impostor"/);
+  assert.match(guard, /cinematic-\$\{cinematic\.kind\}/);
   assert.match(guard, /currentText === text/);
   assert.match(controller, /syncDiscussionUrgency\(\)/);
   assert.match(controller, /syncVotingUrgency\(\)/);
