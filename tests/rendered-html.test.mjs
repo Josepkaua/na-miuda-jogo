@@ -33,8 +33,8 @@ test("renders the production identity and social metadata", async () => {
   assert.match(html, /<meta[^>]+name=["']viewport["'][^>]+width=device-width/i);
   assert.match(html, /<meta[^>]+property=["']og:title["'][^>]+Na Miúda!/i);
   assert.match(html, /<meta[^>]+property=["']og:image["'][^>]+na-miuda-jogo\.onrender\.com\/og\.png/i);
-  assert.match(html, /Criar sala e convidar/i);
-  assert.match(html, /chat do próprio jogo/i);
+  assert.match(html, /Criar sala e chamar a turma/i);
+  assert.match(html, /chat (?:no jogo|integrado)/i);
 });
 
 test("keeps the discussion chat usable on narrow screens", async () => {
@@ -45,4 +45,23 @@ test("keeps the discussion chat usable on narrow screens", async () => {
   assert.match(css, /\.game-grid\.chat-focus\s*\{[^}]*grid-template-areas:\s*"chat"\s*"main"\s*"players";/s);
   assert.match(css, /\.chat-focus \.chat-panel\s*\{[^}]*height:\s*clamp\([^}]*100dvh/s);
   assert.match(css, /\.chat-focus \.chat-messages\s*\{[^}]*min-height:\s*0;/s);
+});
+
+test("keeps the lobby chat large and long player lists contained", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(css, /\.game-grid\.phase-lobby\s*\{[^}]*grid-template-areas:\s*"players main chat";/s);
+  assert.match(css, /\.phase-lobby \.player-list\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
+  assert.match(css, /\.phase-lobby \.chat-messages\s*\{[^}]*flex:\s*1 1 auto;[^}]*height:\s*auto;/s);
+  assert.match(css, /\.game-grid\.phase-lobby\s*\{[^}]*height:\s*auto;[^}]*grid-template-areas:\s*"main"\s*"players"\s*"chat";/s);
+  assert.match(css, /\.vote-progress\s*\{[^}]*font-size:\s*12px;[^}]*font-weight:\s*900;/s);
+});
+
+test("removes inactive players from server-side vote eligibility", async () => {
+  const sql = await readFile(new URL("../supabase/migrations/20260824040000_remove_inactive_players.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /set left_at = now\(\), is_ready = false[\s\S]*last_seen_at <= now\(\) - interval '75 seconds'/i);
+  assert.match(sql, /eligible_voters[\s\S]*p\.left_at is null[\s\S]*p\.last_seen_at > now\(\) - interval '75 seconds'/i);
+  assert.match(sql, /vote_total[\s\S]*p\.left_at is null[\s\S]*p\.last_seen_at > now\(\) - interval '75 seconds'/i);
+  assert.match(sql, /host_player_id = replacement_host/i);
 });
