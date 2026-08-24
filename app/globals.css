@@ -73,15 +73,24 @@ select option { background: #fffdf6; color: #082e34; }
 .brand-logo { width: 52px; height: 52px; flex: 0 0 auto; background: url("/mascote-na-miuda.png") center / contain no-repeat; filter: drop-shadow(0 8px 10px rgba(6,44,50,.17)); }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .rules-button { border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 800; cursor: pointer; }
-.theme-switch { display: flex; align-items: center; gap: 7px; height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 0 9px 0 12px; background: color-mix(in srgb, var(--paper) 80%, transparent); }
-.theme-switch > span { color: var(--muted); }
-.theme-cycle { display: none; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
-.theme-switch select { width: 76px; padding: 0; border: 0; background: transparent; color: var(--ink); font-size: 10px; font-weight: 800; outline: none; }
+.theme-switch { position: relative; z-index: 20; }
+.theme-trigger { height: 38px; min-width: 112px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; padding: 0 11px; background: color-mix(in srgb, var(--paper) 92%, transparent); color: var(--ink); cursor: pointer; box-shadow: 0 5px 18px rgba(6,44,50,.06); }
+.theme-trigger > span { color: var(--muted); font-size: 15px; line-height: 1; }
+.theme-trigger strong { flex: 1; text-align: left; font-size: 10px; font-weight: 900; }
+.theme-trigger i { color: var(--muted); font-size: 11px; font-style: normal; transition: transform .16s ease; }
+.theme-trigger[aria-expanded="true"] i { transform: rotate(180deg); }
+.theme-trigger:focus-visible, .theme-menu button:focus-visible { outline: 3px solid color-mix(in srgb, var(--deep-2) 35%, transparent); outline-offset: 2px; }
+.theme-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 154px; padding: 6px; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--paper); color: var(--ink); box-shadow: 0 18px 45px rgba(2,25,29,.24); }
+.theme-menu button { width: 100%; min-height: 38px; display: grid; grid-template-columns: 22px 1fr 18px; align-items: center; gap: 5px; border: 0; border-radius: 10px; padding: 7px 9px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.theme-menu button:hover, .theme-menu button.active { background: var(--soft); }
+.theme-menu button.active { color: var(--deep-2); }
+.theme-menu button span { font-size: 15px; }
+.theme-menu button strong { font-size: 11px; }
+.theme-menu button i { color: var(--success); text-align: center; font-style: normal; font-weight: 900; }
 
 .landing-wrap { width: min(1180px, 100%); margin: 0 auto; padding: 42px 0 70px; display: grid; grid-template-columns: 1.02fr .98fr; column-gap: 7vw; align-items: center; }
 .hero-copy { padding: 28px 0; position: relative; }
 .hero-mascot { position: absolute; width: 218px; height: 218px; right: -10px; top: -184px; z-index: 0; isolation: isolate; background: url("/mascote-na-miuda.png") center / contain no-repeat; filter: drop-shadow(0 24px 30px rgba(6,44,50,.22)); animation: mascot-float 5s ease-in-out infinite; }
-.hero-mascot::before { content: ""; position: absolute; inset: 27px; z-index: -1; border-radius: 50%; background: color-mix(in srgb, var(--lime) 28%, transparent); box-shadow: 0 0 0 18px color-mix(in srgb, var(--lime) 7%, transparent); }
 .hero-mascot > span { position: absolute; right: 17px; bottom: 31px; width: 42px; height: 42px; display: grid; place-items: center; border: 3px solid var(--cream); border-radius: 14px; background: var(--lime); color: #073d45; font-size: 22px; font-weight: 1000; transform: rotate(8deg); box-shadow: 0 10px 22px rgba(6,44,50,.18); }
 @keyframes mascot-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-9px) rotate(2deg); } }
 .eyebrow, .micro-label { text-transform: uppercase; letter-spacing: .13em; font-size: 11px; font-weight: 900; }
@@ -293,9 +302,9 @@ footer { width: min(1180px, 100%); margin: 0 auto; padding: 23px 0 28px; border-
   .topbar { min-height: 76px; }
   .brand { font-size: 19px; }
   .brand-logo { width: 43px; height: 43px; }
-  .theme-switch select, .theme-switch > span { display: none; }
-  .theme-switch { width: 39px; justify-content: center; padding: 0; }
-  .theme-cycle { width: 100%; height: 100%; display: grid; place-items: center; }
+  .theme-trigger { width: 39px; min-width: 39px; justify-content: center; padding: 0; }
+  .theme-trigger strong, .theme-trigger i { display: none; }
+  .theme-menu { right: -2px; }
   .hero-copy h1 { font-size: 50px; }
   .hero-mascot { width: 112px; height: 112px; margin-top: 0; }
   .hero-mascot > span { width: 29px; height: 29px; bottom: 10px; font-size: 15px; border-width: 2px; }

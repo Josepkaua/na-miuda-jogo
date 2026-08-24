@@ -299,7 +299,7 @@ export default function Home() {
 
   async function createRoom() {
     const validName = validateName(); if (!validName) return;
-    setBusy(true); setNotice("");
+    setBusy(true); setError(""); setNotice("");
     try {
       if (!remoteEnabled) {
         setDemoMode(true);
@@ -325,7 +325,7 @@ export default function Home() {
     const validName = validateName(); const code = joinCode.trim().toUpperCase();
     if (!validName) return;
     if (code.length !== 6) { setError("O código da sala precisa ter 6 caracteres."); return; }
-    setBusy(true);
+    setBusy(true); setError(""); setNotice("");
     try {
       if (!remoteEnabled) {
         setDemoMode(true); setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount));
@@ -550,9 +550,22 @@ export default function Home() {
 
 function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: ThemeMode) => void }) {
   const options: Array<{ value: ThemeMode; label: string; icon: string }> = [{ value: "system", label: "Sistema", icon: "◐" }, { value: "light", label: "Claro", icon: "☀" }, { value: "dark", label: "Escuro", icon: "☾" }];
-  const current = options.findIndex((item) => item.value === value);
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const current = Math.max(0, options.findIndex((item) => item.value === value));
   const selected = options[current];
-  return <div className="theme-switch" title={`Tema: ${selected.label}`}><span>{selected.icon}</span><button className="theme-cycle" onClick={() => onChange(options[(current + 1) % options.length].value)} aria-label={`Tema atual: ${selected.label}. Toque para trocar`}>{selected.icon}</button><select value={value} onChange={(event) => onChange(event.target.value as ThemeMode)} aria-label="Tema do site">{options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></div>;
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    const closeWithEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("pointerdown", closeOutside);
+    window.addEventListener("keydown", closeWithEscape);
+    return () => { window.removeEventListener("pointerdown", closeOutside); window.removeEventListener("keydown", closeWithEscape); };
+  }, [open]);
+  return <div className="theme-switch" ref={root}>
+    <button className="theme-trigger" type="button" title={`Tema: ${selected.label}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((currentOpen) => !currentOpen)}><span aria-hidden="true">{selected.icon}</span><strong>{selected.label}</strong><i aria-hidden="true">⌄</i></button>
+    {open && <div className="theme-menu" role="menu" aria-label="Escolher tema">{options.map((option) => <button type="button" role="menuitemradio" aria-checked={option.value === value} className={option.value === value ? "active" : ""} key={option.value} onClick={() => { onChange(option.value); setOpen(false); }}><span aria-hidden="true">{option.icon}</span><strong>{option.label}</strong><i aria-hidden="true">{option.value === value ? "✓" : ""}</i></button>)}</div>}
+  </div>;
 }
 
 function Lobby({ snapshot, me, readyCount, selectedCategory, toggleReady, startRound, busy }: { snapshot: Snapshot; me?: Player; readyCount: number; selectedCategory: (typeof categories)[number]; toggleReady: () => void; startRound: () => void; busy: boolean }) {
