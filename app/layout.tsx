@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./discussion-refinement.css";
+import "./cinematic-transitions.css";
 import GamePhaseGuard from "./game-phase-guard";
 
 export const viewport: Viewport = {
