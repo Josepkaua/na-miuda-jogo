@@ -5,10 +5,12 @@ import "./cinematic-transitions.css";
 import "./game-polish.css";
 import "./automatic-flow.css";
 import "./connection-status.css";
+import "./game-hud-refinement.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
 import ConnectionStatus from "./connection-status";
+import ChatEmojiPicker from "./chat-emoji-picker";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -62,6 +64,7 @@ export default function RootLayout({
         <GameAutoFlow />
         <GameMotionController />
         <GamePhaseGuard />
+        <ChatEmojiPicker />
       </body>
     </html>
   );
