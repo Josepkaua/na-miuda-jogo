@@ -86,9 +86,15 @@ test("keeps discussion chat-first and reopens the collective decision after more
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 
   assert.match(guard, /actionLocks\s*=\s*useRef\(new Set<string>\(\)\)/);
+  assert.match(guard, /autoAdvanceLocks\s*=\s*useRef\(new Set<string>\(\)\)/);
   assert.match(guard, /staleNoticeClose\?\.click\(\)/);
   assert.match(guard, /previous\.phase === "discussion" && current\.phase === "voting"/);
+  assert.match(guard, /previous\.phase === "voting" && current\.phase === "results"/);
+  assert.match(guard, /readVotingProgress\(\)/);
+  assert.match(guard, /voting\.complete \|\| voting\.expired/);
+  assert.match(guard, /revealButton\.click\(\)/);
   assert.match(guard, /Tempo encerrado — abrindo a votação…/);
+  assert.match(guard, /Todos votaram — revelando o resultado…/);
 
   assert.match(sql, /outcome := 'more_time'[\s\S]*phase_ends_at = now\(\) \+ interval '1 minute'[\s\S]*delete from public\.discussion_votes[\s\S]*round_id = target_room\.current_round_id/i);
   assert.doesNotMatch(page, /advance_discussion_turn|onAdvanceDiscussionTurn|turn-banner/);
