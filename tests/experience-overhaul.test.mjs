@@ -51,3 +51,25 @@ test("keeps the most important game feedback animated but respects reduced motio
   assert.match(css, /@keyframes score-bump/);
   assert.match(css, /\.player-score\.score-changed/);
 });
+
+test("presents Na Miuda as a standalone game app with branded metadata", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/manifest.ts", import.meta.url), "utf8");
+  const favicon = await readFile(new URL("../public/favicon.svg", import.meta.url), "utf8");
+
+  assert.match(layout, /applicationName:\s*"Na Miúda!"/);
+  assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
+  assert.match(layout, /appleWebApp:/);
+  assert.match(layout, /themeColor:/);
+  assert.match(layout, /\/favicon\.svg/);
+
+  assert.match(manifest, /display:\s*"standalone"/);
+  assert.match(manifest, /lang:\s*"pt-BR"/);
+  assert.match(manifest, /categories:\s*\["games", "entertainment", "social"\]/);
+  assert.match(manifest, /src:\s*"\/favicon\.svg"/);
+  assert.match(manifest, /src:\s*"\/mascote-na-miuda\.png"/);
+
+  assert.match(favicon, /#073D45/);
+  assert.match(favicon, /#C8F43D/);
+  assert.match(favicon, /#76D7FF/);
+});
