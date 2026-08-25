@@ -140,11 +140,13 @@ export default function InteractionSafety() {
 
   useEffect(() => {
     let resetTimer: number | null = null;
+    let handledToast: HTMLElement | null = null;
     const observer = new MutationObserver(() => {
       const toast = document.querySelector<HTMLElement>(".toast.success");
-      if (!/link da sala copiado/i.test(toast?.textContent ?? "")) return;
+      if (!toast || toast === handledToast || !/link da sala copiado/i.test(toast.textContent ?? "")) return;
       const button = document.querySelector<HTMLButtonElement>(".room-code-block button");
       if (!button || button.dataset.copyFeedback === "true") return;
+      handledToast = toast;
       const original = button.textContent ?? "Copiar";
       button.dataset.copyFeedback = "true";
       button.textContent = "Copiado ✓";
