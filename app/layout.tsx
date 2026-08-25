@@ -9,12 +9,14 @@ import "./game-hud-refinement.css";
 import "./chat-focus-presence.css";
 import "./experience-overhaul.css";
 import "./game-experience-chrome.css";
+import "./automatic-mechanics-ui.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
 import ConnectionStatus from "./connection-status";
 import ChatEmojiPicker from "./chat-emoji-picker";
 import ChatFocusPresence from "./chat-focus-presence";
+import AutomaticMechanicsUi from "./automatic-mechanics-ui";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -83,6 +85,7 @@ export default function RootLayout({
         <GameAutoFlow />
         <GameMotionController />
         <GamePhaseGuard />
+        <AutomaticMechanicsUi />
         <ChatEmojiPicker />
         <ChatFocusPresence />
       </body>
