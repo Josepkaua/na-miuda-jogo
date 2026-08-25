@@ -89,6 +89,9 @@ test("shows realtime animated typing presence without a database migration", asy
   assert.match(presence, /1900/);
   assert.match(presence, /input\.addEventListener\("blur", stopTyping\)/);
   assert.match(presence, /document\.addEventListener\("visibilitychange", onVisibilityChange\)/);
+  assert.match(presence, /function sameNames/);
+  assert.match(presence, /let localTypingActive = false/);
+  assert.match(presence, /if \(!localTypingActive\) return/);
   assert.match(css, /\.chat-typing-indicator/);
   assert.match(css, /@keyframes typing-dot/);
   assert.match(css, /\.chat-typing-indicator i:nth-of-type\(3\)/);
