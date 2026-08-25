@@ -64,6 +64,7 @@ export default function GameMotionController() {
     const scoreMemory = new WeakMap<HTMLElement, string>();
     const stateMemory = new WeakMap<HTMLElement, string>();
     const timers = new Set<number>();
+    let inspectFrame: number | null = null;
 
     const animateOnce = (element: HTMLElement, className: string, duration = 560) => {
       element.classList.remove(className);
@@ -118,8 +119,16 @@ export default function GameMotionController() {
       lastPhase.current = phase;
     };
 
+    const scheduleInspect = () => {
+      if (inspectFrame !== null) return;
+      inspectFrame = window.requestAnimationFrame(() => {
+        inspectFrame = null;
+        inspect();
+      });
+    };
+
     inspect();
-    const observer = new MutationObserver(inspect);
+    const observer = new MutationObserver(scheduleInspect);
     observer.observe(document.body, {
       childList: true,
       subtree: true,
@@ -130,6 +139,7 @@ export default function GameMotionController() {
 
     return () => {
       observer.disconnect();
+      if (inspectFrame !== null) window.cancelAnimationFrame(inspectFrame);
       timers.forEach((timer) => window.clearTimeout(timer));
       timers.clear();
       delete document.documentElement.dataset.gamePhase;
