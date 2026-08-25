@@ -19,16 +19,31 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f1df" },
+    { media: "(prefers-color-scheme: dark)", color: "#071e23" },
+  ],
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://na-miuda-jogo.onrender.com"),
+  applicationName: "Na Miúda!",
+  manifest: "/manifest.webmanifest",
   title: "Na Miúda! — Jogo do Impostor",
   description:
     "Crie uma sala, converse pelo chat integrado e descubra quem está improvisando. Um jogo de dedução social brasileiro para jogar à distância.",
+  appleWebApp: {
+    capable: true,
+    title: "Na Miúda!",
+    statusBarStyle: "black-translucent",
+  },
   icons: {
-    icon: "/mascote-na-miuda.png",
-    shortcut: "/mascote-na-miuda.png",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/mascote-na-miuda.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/mascote-na-miuda.png",
   },
   openGraph: {
     title: "Na Miúda! — Todo mundo sabe. Menos um.",
