@@ -61,11 +61,51 @@ export default function GameMotionController() {
 
   useEffect(() => {
     originalTitle.current = document.title;
+    const scoreMemory = new WeakMap<HTMLElement, string>();
+    const stateMemory = new WeakMap<HTMLElement, string>();
+    const timers = new Set<number>();
+
+    const animateOnce = (element: HTMLElement, className: string, duration = 560) => {
+      element.classList.remove(className);
+      void element.offsetWidth;
+      element.classList.add(className);
+      const timer = window.setTimeout(() => {
+        element.classList.remove(className);
+        timers.delete(timer);
+      }, duration);
+      timers.add(timer);
+    };
+
+    const syncScoreFeedback = () => {
+      document.querySelectorAll<HTMLElement>(".player-score").forEach((score) => {
+        const current = score.textContent?.replace(/\s+/g, " ").trim() ?? "";
+        const previous = scoreMemory.get(score);
+        if (previous !== undefined && previous !== current) animateOnce(score, "score-changed");
+        scoreMemory.set(score, current);
+      });
+    };
+
+    const syncPlayerStateFeedback = () => {
+      document.querySelectorAll<HTMLElement>(".player-row").forEach((row) => {
+        const state = row.querySelector<HTMLElement>(".player-name small")?.textContent?.trim() ?? "";
+        const previous = stateMemory.get(row);
+        if (previous !== undefined && previous !== state) animateOnce(row, "player-state-changed", 500);
+        stateMemory.set(row, state);
+      });
+    };
+
+    const syncPhaseDataset = (phase: Phase | null) => {
+      if (phase) document.documentElement.dataset.gamePhase = phase;
+      else delete document.documentElement.dataset.gamePhase;
+    };
 
     const inspect = () => {
       const phase = readPhase();
+      syncPhaseDataset(phase);
       syncDiscussionUrgency();
       syncVotingUrgency();
+      syncScoreFeedback();
+      syncPlayerStateFeedback();
 
       if (!phase) {
         lastPhase.current = null;
@@ -85,11 +125,14 @@ export default function GameMotionController() {
       subtree: true,
       attributes: true,
       characterData: true,
-      attributeFilter: ["class", "disabled"],
+      attributeFilter: ["class", "disabled", "style"],
     });
 
     return () => {
       observer.disconnect();
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers.clear();
+      delete document.documentElement.dataset.gamePhase;
       if (originalTitle.current) document.title = originalTitle.current;
     };
   }, []);
