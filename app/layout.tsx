@@ -11,6 +11,7 @@ import "./experience-overhaul.css";
 import "./game-experience-chrome.css";
 import "./automatic-mechanics-ui.css";
 import "./interaction-safety.css";
+import "./neon-identity.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
@@ -25,8 +26,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f1df" },
-    { media: "(prefers-color-scheme: dark)", color: "#071e23" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f5ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#060817" },
   ],
 };
 
