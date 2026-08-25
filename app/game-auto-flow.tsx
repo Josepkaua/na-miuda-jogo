@@ -23,16 +23,8 @@ function findRevealAdvanceButton() {
     .find((button) => /começar pistas/i.test(button.textContent ?? "")) ?? null;
 }
 
-function revealHostCardIfNeeded() {
-  const card = document.querySelector<HTMLButtonElement>(".game-grid.phase-reveal .role-card");
-  if (!card || card.disabled || card.classList.contains("revealed")) return false;
-  card.click();
-  return true;
-}
-
 export default function GameAutoFlow() {
   const locks = useRef(new Set<string>());
-  const revealLocks = useRef(new Set<string>());
 
   useEffect(() => {
     const timers = new Set<number>();
@@ -51,7 +43,6 @@ export default function GameAutoFlow() {
       const key = readRoundKey();
       if (!key) {
         locks.current.clear();
-        revealLocks.current.clear();
         return;
       }
 
@@ -59,22 +50,19 @@ export default function GameAutoFlow() {
       const button = findRevealAdvanceButton();
       if (!progress.complete || !button || locks.current.has(key)) return;
 
-      if (button.disabled) {
-        if (!revealLocks.current.has(key) && revealHostCardIfNeeded()) {
-          revealLocks.current.add(key);
-          later(() => revealLocks.current.delete(key), 900);
-        }
-        return;
-      }
-
+      // The React button is disabled while the host has their card hidden. Once every
+      // active player has acknowledged the role, the button is only an internal bridge
+      // for the existing action handler, so enable it without reopening the host secret.
+      if (button.disabled) button.disabled = false;
       locks.current.add(key);
       later(() => {
-        if (!button.isConnected || button.disabled) {
+        if (!button.isConnected) {
           locks.current.delete(key);
           return;
         }
+        if (button.disabled) button.disabled = false;
         button.click();
-      }, 420);
+      }, 220);
     };
 
     const scheduleInspect = () => {
