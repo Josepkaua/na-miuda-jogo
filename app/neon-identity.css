@@ -1,0 +1,903 @@
+/* Identidade 2026 — violeta como marca, ciano para investigação, coral para tensão, âmbar para decisão e verde para recompensa. */
+
+:root {
+  --nm-violet: #6c5ce7;
+  --nm-violet-2: #8b5cf6;
+  --nm-cyan: #00d4ff;
+  --nm-cyan-soft: #54e3ff;
+  --nm-green: #00e676;
+  --nm-amber: #ffb800;
+  --nm-coral: #ff4d6d;
+  --nm-navy: #080b1c;
+  --nm-navy-2: #10152d;
+  --nm-panel: #ffffff;
+  --nm-panel-2: #f6f7ff;
+  --nm-text: #12172f;
+  --nm-muted: #6f7892;
+  --nm-border: rgba(58, 66, 111, .14);
+  --nm-glow-violet: 0 0 0 1px rgba(108,92,231,.08), 0 18px 50px rgba(63,48,161,.13);
+
+  --ink: var(--nm-text);
+  --deep: #5c4ad7;
+  --deep-2: #4a43d7;
+  --lime: var(--nm-violet);
+  --lime-bright: #9586ff;
+  --cream: #f3f5ff;
+  --paper: var(--nm-panel);
+  --soft: #eceffc;
+  --muted: var(--nm-muted);
+  --line: var(--nm-border);
+  --danger: var(--nm-coral);
+  --success: #00a866;
+  --shadow: 0 24px 70px rgba(36,42,84,.13);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f6f7ff;
+  --deep: #a899ff;
+  --deep-2: #80eaff;
+  --cream: #060817;
+  --paper: #0e1328;
+  --soft: #151b35;
+  --muted: #98a3c4;
+  --line: rgba(158,169,222,.16);
+  --success: var(--nm-green);
+  --shadow: 0 28px 80px rgba(0,0,0,.38);
+  --nm-panel: #0e1328;
+  --nm-panel-2: #111833;
+  --nm-text: #f6f7ff;
+  --nm-muted: #98a3c4;
+  --nm-border: rgba(158,169,222,.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ink: #f6f7ff;
+    --deep: #a899ff;
+    --deep-2: #80eaff;
+    --cream: #060817;
+    --paper: #0e1328;
+    --soft: #151b35;
+    --muted: #98a3c4;
+    --line: rgba(158,169,222,.16);
+    --success: var(--nm-green);
+    --shadow: 0 28px 80px rgba(0,0,0,.38);
+    --nm-panel: #0e1328;
+    --nm-panel-2: #111833;
+    --nm-text: #f6f7ff;
+    --nm-muted: #98a3c4;
+    --nm-border: rgba(158,169,222,.16);
+  }
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--nm-violet) 12%, transparent), transparent 33%),
+    radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--nm-cyan) 8%, transparent), transparent 28%),
+    var(--cream);
+}
+
+.app-shell::before {
+  opacity: .48;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--nm-violet) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--nm-cyan) 4%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, #000, rgba(0,0,0,.5) 58%, transparent 92%);
+}
+
+.ambient-one {
+  background: color-mix(in srgb, var(--nm-violet) 23%, transparent);
+  filter: blur(28px);
+}
+
+.ambient-two {
+  background: color-mix(in srgb, var(--nm-cyan) 15%, transparent);
+  filter: blur(34px);
+}
+
+/* Chrome */
+.topbar {
+  position: relative;
+  z-index: 15;
+}
+
+.brand {
+  letter-spacing: -.045em;
+}
+
+.brand-logo {
+  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--nm-violet) 28%, transparent));
+}
+
+.rules-button,
+.theme-trigger,
+.ghost-button.compact {
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+.rules-button:hover,
+.theme-trigger:hover,
+.ghost-button.compact:hover {
+  color: var(--ink);
+}
+
+.theme-trigger,
+.ghost-button.compact {
+  border-color: color-mix(in srgb, var(--nm-violet) 20%, var(--line));
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.theme-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--nm-violet) 55%, var(--line));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nm-violet) 9%, transparent);
+}
+
+.theme-menu {
+  border-color: color-mix(in srgb, var(--nm-violet) 28%, var(--line));
+  box-shadow: 0 22px 56px rgba(7,9,30,.32);
+}
+
+.theme-menu button.active {
+  color: var(--nm-violet-2);
+  background: color-mix(in srgb, var(--nm-violet) 10%, var(--soft));
+}
+
+/* Landing também passa a falar a mesma língua visual. */
+.hero-copy h1 em {
+  background: linear-gradient(110deg, var(--nm-violet), #8f63ff 44%, var(--nm-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-copy h1 em::after {
+  height: 8px;
+  bottom: -10px;
+  background: linear-gradient(90deg, var(--nm-violet), var(--nm-cyan));
+  opacity: .76;
+  filter: blur(.2px);
+}
+
+.eyebrow,
+.category-preview > span,
+.entry-card,
+.panel {
+  border-color: color-mix(in srgb, var(--nm-violet) 18%, var(--line));
+}
+
+.eyebrow b,
+.browser-badge i {
+  color: var(--nm-cyan);
+  background: var(--nm-cyan);
+}
+
+.entry-card {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--nm-violet) 4%, var(--paper)), var(--paper) 48%, color-mix(in srgb, var(--nm-cyan) 3%, var(--paper)));
+  box-shadow: var(--nm-glow-violet);
+}
+
+.entry-card::after {
+  background: linear-gradient(90deg, var(--nm-violet), var(--nm-cyan));
+  opacity: .78;
+}
+
+.entry-tabs {
+  border-color: color-mix(in srgb, var(--nm-violet) 18%, var(--line));
+}
+
+.entry-tabs button.active {
+  color: var(--ink);
+  box-shadow: 0 7px 22px color-mix(in srgb, var(--nm-violet) 12%, transparent);
+}
+
+.entry-tabs button.active::after {
+  background: linear-gradient(90deg, var(--nm-violet), var(--nm-cyan));
+}
+
+.text-input:focus,
+.code-input:focus,
+.wide-select:focus,
+.quick-settings select:focus,
+.chat-composer input:focus {
+  border-color: color-mix(in srgb, var(--nm-cyan) 70%, var(--nm-violet));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nm-cyan) 10%, transparent), 0 8px 24px color-mix(in srgb, var(--nm-violet) 8%, transparent);
+}
+
+.primary-button {
+  color: #fff;
+  background: linear-gradient(110deg, #5545df, var(--nm-violet) 45%, #7c4ff0);
+  box-shadow: 0 8px 0 #3b2caa, 0 16px 34px color-mix(in srgb, var(--nm-violet) 24%, transparent);
+}
+
+.primary-button:hover:not(:disabled) {
+  box-shadow: 0 9px 0 #37299f, 0 22px 42px color-mix(in srgb, var(--nm-violet) 32%, transparent);
+}
+
+.secondary-button {
+  background: linear-gradient(110deg, #00a7d1, var(--nm-cyan));
+  color: #04111b;
+}
+
+.suggestion-card,
+.suspicion-note {
+  border-color: color-mix(in srgb, var(--nm-violet) 34%, var(--line));
+  background: color-mix(in srgb, var(--nm-violet) 8%, var(--paper));
+}
+
+.suggestion-card .spark,
+.suspicion-note span {
+  color: var(--nm-violet-2);
+}
+
+/* HUD unificado */
+.game-wrap {
+  --phase-accent: var(--nm-violet);
+  --phase-accent-soft: color-mix(in srgb, var(--phase-accent) 12%, transparent);
+  --phase-accent-line: color-mix(in srgb, var(--phase-accent) 42%, var(--line));
+}
+
+:root[data-game-phase="lobby"] { --phase-accent: var(--nm-violet); }
+:root[data-game-phase="reveal"] { --phase-accent: #975cff; }
+:root[data-game-phase="discussion"] { --phase-accent: var(--nm-cyan); }
+:root[data-game-phase="voting"] { --phase-accent: var(--nm-coral); }
+:root[data-game-phase="results"] { --phase-accent: var(--nm-green); }
+
+.game-wrap > .room-header.panel,
+.game-wrap > .phase-rail.panel {
+  border-color: color-mix(in srgb, var(--phase-accent) 40%, var(--line));
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--phase-accent) 7%, var(--paper)), var(--paper) 50%, color-mix(in srgb, var(--nm-cyan) 3%, var(--paper)));
+  box-shadow: 0 16px 42px color-mix(in srgb, var(--phase-accent) 10%, transparent);
+}
+
+.game-wrap > .room-header.panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.game-wrap > .room-header.panel::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--phase-accent), var(--nm-cyan), transparent);
+  opacity: .72;
+  animation: nm-hud-scan 4.6s ease-in-out infinite;
+}
+
+.room-live {
+  color: color-mix(in srgb, var(--nm-green) 80%, var(--ink));
+  background: color-mix(in srgb, var(--nm-green) 10%, var(--paper));
+  border-color: color-mix(in srgb, var(--nm-green) 30%, var(--line));
+}
+
+.room-live i {
+  background: var(--nm-green);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nm-green) 12%, transparent), 0 0 14px color-mix(in srgb, var(--nm-green) 50%, transparent);
+}
+
+.room-heading .micro-label {
+  color: var(--phase-accent);
+}
+
+.room-code-block strong {
+  letter-spacing: .18em;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--nm-cyan) 18%, transparent);
+}
+
+.room-code-block button {
+  border-color: color-mix(in srgb, var(--nm-cyan) 35%, var(--line));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--nm-cyan) 13%, var(--paper)), color-mix(in srgb, var(--nm-violet) 8%, var(--paper)));
+  color: color-mix(in srgb, var(--nm-cyan) 72%, var(--ink));
+}
+
+.room-code-block button:hover {
+  transform: translateY(-1px);
+  border-color: var(--nm-cyan);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--nm-cyan) 15%, transparent);
+}
+
+/* Ícones de etapa: SVG via máscara para manter traço consistente sem dependência externa. */
+.phase-step {
+  --step-color: var(--nm-violet);
+}
+.phase-step:nth-child(1) { --step-color: var(--nm-cyan); }
+.phase-step:nth-child(2) { --step-color: #975cff; }
+.phase-step:nth-child(3) { --step-color: #2ecbff; }
+.phase-step:nth-child(4) { --step-color: var(--nm-coral); }
+.phase-step:nth-child(5) { --step-color: var(--nm-green); }
+
+.game-wrap > .phase-rail .phase-step > span {
+  position: relative;
+  font-size: 0 !important;
+  color: transparent !important;
+  background: color-mix(in srgb, var(--step-color) 9%, var(--soft));
+  border: 1px solid color-mix(in srgb, var(--step-color) 22%, var(--line));
+}
+
+.game-wrap > .phase-rail .phase-step > span::before {
+  content: "";
+  width: 19px;
+  height: 19px;
+  display: block;
+  background: var(--step-color);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.phase-step:nth-child(1) > span::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M16 11a4 4 0 1 0-3.2-6.4A5 5 0 1 0 7 12h2a7 7 0 0 0-7 7v1h2v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1h2v-1a7 7 0 0 0-4-6.32V11Zm-5-1a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm7.5 3.1A5.5 5.5 0 0 1 23 18.5V20h-2v-1.5a3.5 3.5 0 0 0-2.5-3.35v-2.05Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M16 11a4 4 0 1 0-3.2-6.4A5 5 0 1 0 7 12h2a7 7 0 0 0-7 7v1h2v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1h2v-1a7 7 0 0 0-4-6.32V11Zm-5-1a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm7.5 3.1A5.5 5.5 0 0 1 23 18.5V20h-2v-1.5a3.5 3.5 0 0 0-2.5-3.35v-2.05Z'/%3E%3C/svg%3E");
+}
+
+.phase-step:nth-child(2) > span::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17 9h-1V7a4 4 0 0 0-8 0v2H7a3 3 0 0 0-3 3v7a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-7a3 3 0 0 0-3-3Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm8 12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7Zm-6-5a1.5 1.5 0 0 0-1 2.62V18h2v-1.38A1.5 1.5 0 0 0 12 14Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17 9h-1V7a4 4 0 0 0-8 0v2H7a3 3 0 0 0-3 3v7a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-7a3 3 0 0 0-3-3Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm8 12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7Zm-6-5a1.5 1.5 0 0 0-1 2.62V18h2v-1.38A1.5 1.5 0 0 0 12 14Z'/%3E%3C/svg%3E");
+}
+
+.phase-step:nth-child(3) > span::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m21.7 20.3-4.35-4.35A8 8 0 1 0 16 17.35l4.3 4.35 1.4-1.4ZM4 10a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m21.7 20.3-4.35-4.35A8 8 0 1 0 16 17.35l4.3 4.35 1.4-1.4ZM4 10a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z'/%3E%3C/svg%3E");
+}
+
+.phase-step:nth-child(4) > span::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2 1 21h22L12 2Zm0 4 7.55 13H4.45L12 6Zm-1 4v5h2v-5h-2Zm0 7v2h2v-2h-2Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2 1 21h22L12 2Zm0 4 7.55 13H4.45L12 6Zm-1 4v5h2v-5h-2Zm0 7v2h2v-2h-2Z'/%3E%3C/svg%3E");
+}
+
+.phase-step:nth-child(5) > span::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 5c-5.5 0-9.5 5.2-10.5 6.7a.55.55 0 0 0 0 .6C2.5 13.8 6.5 19 12 19s9.5-5.2 10.5-6.7a.55.55 0 0 0 0-.6C21.5 10.2 17.5 5 12 5Zm0 12c-4 0-7.2-3.5-8.35-5C4.8 10.5 8 7 12 7s7.2 3.5 8.35 5C19.2 13.5 16 17 12 17Zm0-7a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 5c-5.5 0-9.5 5.2-10.5 6.7a.55.55 0 0 0 0 .6C2.5 13.8 6.5 19 12 19s9.5-5.2 10.5-6.7a.55.55 0 0 0 0-.6C21.5 10.2 17.5 5 12 5Zm0 12c-4 0-7.2-3.5-8.35-5C4.8 10.5 8 7 12 7s7.2 3.5 8.35 5C19.2 13.5 16 17 12 17Zm0-7a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z'/%3E%3C/svg%3E");
+}
+
+.phase-step.complete > span::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m9.2 16.6-4.4-4.4 1.4-1.4 3 3 8.6-8.6 1.4 1.4-10 10Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m9.2 16.6-4.4-4.4 1.4-1.4 3 3 8.6-8.6 1.4 1.4-10 10Z'/%3E%3C/svg%3E");
+}
+
+.game-wrap > .phase-rail .phase-step.active {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--step-color) 14%, var(--paper)), color-mix(in srgb, var(--step-color) 5%, var(--paper)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--step-color) 28%, transparent), 0 10px 30px color-mix(in srgb, var(--step-color) 12%, transparent);
+}
+
+.game-wrap > .phase-rail .phase-step.active > span {
+  background: var(--step-color);
+  border-color: var(--step-color);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--step-color) 10%, transparent), 0 0 24px color-mix(in srgb, var(--step-color) 34%, transparent);
+}
+
+.game-wrap > .phase-rail .phase-step.active > span::before {
+  background: #07101b;
+}
+
+:root[data-theme="dark"] .game-wrap > .phase-rail .phase-step.active > span::before {
+  background: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .game-wrap > .phase-rail .phase-step.active > span::before { background: #fff; }
+}
+
+.phase-step strong {
+  transition: color .18s ease;
+}
+
+.phase-step.active strong {
+  color: var(--step-color);
+}
+
+/* Superfícies internas */
+.game-grid > .panel {
+  border-color: color-mix(in srgb, var(--phase-accent) 22%, var(--line));
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--phase-accent) 7%, transparent), transparent 34%),
+    color-mix(in srgb, var(--paper) 97%, transparent);
+  box-shadow: 0 18px 52px rgba(6,8,28,.08);
+}
+
+:root[data-theme="dark"] .game-grid > .panel {
+  box-shadow: 0 20px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .game-grid > .panel { box-shadow: 0 20px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.025); }
+}
+
+.micro-label {
+  color: color-mix(in srgb, var(--phase-accent) 80%, var(--ink));
+}
+
+/* Lobby */
+.phase-lobby .lobby-intro {
+  padding: 18px 20px 18px 23px;
+  border: 1px solid color-mix(in srgb, var(--nm-violet) 22%, var(--line));
+  border-radius: 18px;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--nm-violet) 10%, var(--paper)), color-mix(in srgb, var(--nm-cyan) 4%, var(--paper)));
+}
+
+.phase-lobby .lobby-intro::before {
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  background: linear-gradient(var(--nm-violet), var(--nm-cyan));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--nm-violet) 38%, transparent);
+}
+
+.phase-lobby .lobby-intro h3 {
+  margin-top: 5px;
+}
+
+.phase-lobby .settings-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nm-violet) 20%, var(--line));
+  border-radius: 19px;
+  background: color-mix(in srgb, var(--paper) 96%, transparent);
+}
+
+.phase-lobby .settings-title {
+  grid-column: 1 / -1;
+  padding: 3px 4px 8px;
+}
+
+.phase-lobby .setting-row {
+  min-width: 0;
+  min-height: 118px;
+  padding: 14px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--nm-violet) 14%, var(--line));
+  border-radius: 15px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--nm-violet) 5%, var(--paper)), color-mix(in srgb, var(--nm-cyan) 2%, var(--paper)));
+}
+
+.phase-lobby .setting-copy {
+  align-items: flex-start;
+}
+
+.phase-lobby .setting-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--nm-cyan) 20%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nm-violet) 7%, var(--soft));
+  font-size: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+.phase-lobby .setting-copy strong {
+  font-size: 13px;
+}
+
+.phase-lobby .setting-copy small {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.phase-lobby .setting-value {
+  width: max-content;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--nm-violet) 18%, var(--line));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--nm-violet) 72%, var(--ink));
+  background: color-mix(in srgb, var(--nm-violet) 7%, var(--paper));
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.phase-lobby .ready-box {
+  border-color: color-mix(in srgb, var(--nm-violet) 30%, var(--line));
+  background: linear-gradient(110deg, color-mix(in srgb, var(--nm-violet) 9%, var(--paper)), color-mix(in srgb, var(--nm-cyan) 6%, var(--paper)));
+}
+
+.phase-lobby .ready-bar {
+  background: color-mix(in srgb, var(--nm-violet) 10%, var(--soft));
+}
+
+.phase-lobby .ready-bar i {
+  background: linear-gradient(90deg, var(--nm-violet), var(--nm-cyan));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--nm-cyan) 28%, transparent);
+}
+
+.phase-lobby .ready-button {
+  border: 1px solid color-mix(in srgb, var(--nm-violet) 30%, var(--line));
+  background: color-mix(in srgb, var(--nm-violet) 7%, var(--paper));
+  color: color-mix(in srgb, var(--nm-violet) 78%, var(--ink));
+}
+
+.phase-lobby .ready-button.active {
+  border-color: color-mix(in srgb, var(--nm-green) 55%, var(--line));
+  color: color-mix(in srgb, var(--nm-green) 78%, var(--ink));
+  background: color-mix(in srgb, var(--nm-green) 9%, var(--paper));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nm-green) 7%, transparent);
+}
+
+.phase-lobby .lobby-actions .primary-button:not(:disabled) {
+  background: linear-gradient(105deg, #4e43da, var(--nm-violet), #8b4eea);
+}
+
+/* Painel de jogadores */
+.players-panel {
+  overflow: hidden;
+}
+
+.players-heading > span {
+  color: color-mix(in srgb, var(--nm-green) 68%, var(--ink));
+  background: color-mix(in srgb, var(--nm-green) 7%, var(--soft));
+  border: 1px solid color-mix(in srgb, var(--nm-green) 18%, var(--line));
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+
+.player-row {
+  border-color: transparent;
+  transition: transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.player-row:hover {
+  background: color-mix(in srgb, var(--phase-accent) 6%, var(--soft));
+  border-color: color-mix(in srgb, var(--phase-accent) 15%, var(--line));
+}
+
+.player-row.leader {
+  background: linear-gradient(100deg, color-mix(in srgb, var(--nm-amber) 8%, var(--paper)), transparent);
+  border-color: color-mix(in srgb, var(--nm-amber) 22%, var(--line));
+}
+
+.leader-crown,
+.player-row.leader .player-score {
+  color: var(--nm-amber);
+}
+
+.status-dot.online {
+  background: var(--nm-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nm-green) 11%, transparent), 0 0 10px color-mix(in srgb, var(--nm-green) 34%, transparent);
+}
+
+.category-chip {
+  border-color: color-mix(in srgb, var(--nm-violet) 18%, var(--line));
+  background: linear-gradient(110deg, color-mix(in srgb, var(--nm-violet) 6%, var(--paper)), color-mix(in srgb, var(--nm-cyan) 4%, var(--paper)));
+}
+
+.room-mini-stats b {
+  color: var(--phase-accent);
+}
+
+/* Segredo */
+.phase-reveal .phase-icon {
+  font-size: 0 !important;
+  background: color-mix(in srgb, #975cff 10%, var(--paper));
+  border: 1px solid color-mix(in srgb, #975cff 38%, var(--line));
+}
+
+.phase-reveal .phase-icon::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  display: block;
+  background: #975cff;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 5c-5.5 0-9.5 5.2-10.5 6.7a.55.55 0 0 0 0 .6C2.5 13.8 6.5 19 12 19s9.5-5.2 10.5-6.7a.55.55 0 0 0 0-.6C21.5 10.2 17.5 5 12 5Zm0 12c-4 0-7.2-3.5-8.35-5C4.8 10.5 8 7 12 7s7.2 3.5 8.35 5C19.2 13.5 16 17 12 17Zm0-7a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 5c-5.5 0-9.5 5.2-10.5 6.7a.55.55 0 0 0 0 .6C2.5 13.8 6.5 19 12 19s9.5-5.2 10.5-6.7a.55.55 0 0 0 0-.6C21.5 10.2 17.5 5 12 5Zm0 12c-4 0-7.2-3.5-8.35-5C4.8 10.5 8 7 12 7s7.2 3.5 8.35 5C19.2 13.5 16 17 12 17Zm0-7a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.phase-reveal .role-card {
+  border-color: color-mix(in srgb, #975cff 34%, var(--line));
+  background:
+    radial-gradient(circle at 50% -20%, color-mix(in srgb, #975cff 15%, transparent), transparent 45%),
+    var(--paper);
+  box-shadow: 0 22px 54px color-mix(in srgb, #5b35b8 16%, transparent);
+}
+
+.phase-reveal .role-card.revealed {
+  box-shadow: 0 0 0 4px color-mix(in srgb, #975cff 8%, transparent), 0 25px 60px color-mix(in srgb, #5b35b8 20%, transparent);
+}
+
+.phase-reveal .seen-progress {
+  color: color-mix(in srgb, #975cff 75%, var(--ink));
+}
+
+/* Discussão / chat */
+.phase-discussion .chat-panel,
+.phase-discussion .main-panel {
+  border-color: color-mix(in srgb, var(--nm-cyan) 25%, var(--line));
+}
+
+.chat-panel {
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--nm-cyan) 5%, transparent), transparent 30%),
+    color-mix(in srgb, var(--paper) 98%, transparent) !important;
+}
+
+.chat-heading h3::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  display: inline-block;
+  margin-right: 8px;
+  border-radius: 4px 4px 4px 1px;
+  background: var(--nm-cyan);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--nm-cyan) 32%, transparent);
+  transform: rotate(-8deg);
+}
+
+.chat-message.own p,
+.chat-message.is-me p {
+  border-color: color-mix(in srgb, var(--nm-violet) 25%, var(--line));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--nm-violet) 10%, var(--soft)), color-mix(in srgb, var(--nm-cyan) 5%, var(--soft)));
+}
+
+.chat-composer {
+  border-top-color: color-mix(in srgb, var(--nm-cyan) 16%, var(--line));
+}
+
+.chat-composer input {
+  border-color: color-mix(in srgb, var(--nm-cyan) 18%, var(--line));
+  background: color-mix(in srgb, var(--paper) 94%, var(--soft));
+}
+
+.chat-composer button[type="submit"] {
+  background: linear-gradient(135deg, var(--nm-violet), #7447ed);
+  color: #fff;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--nm-violet) 24%, transparent);
+}
+
+.emoji-trigger {
+  border-color: color-mix(in srgb, var(--nm-violet) 20%, var(--line)) !important;
+  background: color-mix(in srgb, var(--nm-violet) 6%, var(--paper)) !important;
+}
+
+.emoji-menu {
+  border-color: color-mix(in srgb, var(--nm-violet) 28%, var(--line)) !important;
+  box-shadow: 0 24px 54px rgba(4,5,24,.30) !important;
+}
+
+.chat-typing-indicator {
+  color: color-mix(in srgb, var(--nm-violet) 75%, var(--ink));
+}
+
+.chat-typing-indicator i {
+  background: var(--nm-violet) !important;
+}
+
+.phase-discussion .timer-ring {
+  border-color: color-mix(in srgb, var(--nm-cyan) 38%, var(--line));
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--nm-cyan) 6%, transparent), 0 16px 34px color-mix(in srgb, var(--nm-cyan) 10%, transparent);
+}
+
+.phase-discussion .timer-ring strong {
+  color: var(--nm-cyan);
+  text-shadow: 0 0 20px color-mix(in srgb, var(--nm-cyan) 28%, transparent);
+}
+
+.phase-discussion .tip-box {
+  border-color: color-mix(in srgb, var(--nm-cyan) 20%, var(--line));
+  background: color-mix(in srgb, var(--nm-cyan) 5%, var(--paper));
+}
+
+.phase-discussion .tip-box.impostor-tip {
+  border-color: color-mix(in srgb, #975cff 25%, var(--line));
+  background: color-mix(in srgb, #975cff 6%, var(--paper));
+}
+
+.secret-recheck > button {
+  border-color: color-mix(in srgb, #975cff 23%, var(--line));
+}
+
+/* Votação */
+.phase-voting .main-panel {
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--nm-coral) 8%, transparent), transparent 42%),
+    color-mix(in srgb, var(--paper) 98%, transparent);
+}
+
+.phase-voting .vote-copy {
+  border-left-color: var(--nm-coral);
+}
+
+.phase-voting .vote-card {
+  border-color: color-mix(in srgb, var(--nm-coral) 13%, var(--line));
+  background: color-mix(in srgb, var(--nm-coral) 2.5%, var(--paper));
+}
+
+.phase-voting .vote-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--nm-coral) 45%, var(--line));
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--nm-coral) 12%, transparent);
+}
+
+.phase-voting .vote-card.selected {
+  border-color: var(--nm-coral);
+  background: color-mix(in srgb, var(--nm-coral) 9%, var(--paper));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nm-coral) 10%, transparent), 0 16px 36px color-mix(in srgb, var(--nm-coral) 18%, transparent);
+}
+
+.phase-voting .vote-card.selected i {
+  background: var(--nm-coral);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--nm-coral) 40%, transparent);
+}
+
+.phase-voting .vote-actions .primary-button {
+  background: linear-gradient(105deg, #db3155, var(--nm-coral), #ff6e74);
+  box-shadow: 0 8px 0 #a3213d, 0 18px 36px color-mix(in srgb, var(--nm-coral) 22%, transparent);
+}
+
+.phase-voting .vote-progress {
+  border-color: color-mix(in srgb, var(--nm-amber) 23%, var(--line));
+  background: color-mix(in srgb, var(--nm-amber) 5%, var(--paper));
+}
+
+.phase-voting .vote-progress > div i {
+  background: linear-gradient(90deg, var(--nm-amber), var(--nm-coral));
+}
+
+/* Resultado */
+.phase-results .main-panel {
+  background:
+    radial-gradient(circle at 50% -5%, color-mix(in srgb, var(--nm-green) 11%, transparent), transparent 42%),
+    color-mix(in srgb, var(--paper) 98%, transparent);
+}
+
+.phase-results .result-burst {
+  border-color: color-mix(in srgb, var(--nm-green) 40%, var(--line));
+  background: color-mix(in srgb, var(--nm-green) 8%, var(--paper));
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--nm-green) 5%, transparent), 0 20px 46px color-mix(in srgb, var(--nm-green) 14%, transparent);
+}
+
+.phase-results .result-burst.escaped {
+  border-color: color-mix(in srgb, var(--nm-coral) 42%, var(--line));
+  background: color-mix(in srgb, var(--nm-coral) 8%, var(--paper));
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--nm-coral) 5%, transparent), 0 20px 46px color-mix(in srgb, var(--nm-coral) 14%, transparent);
+}
+
+.result-evidence > div,
+.round-ranking {
+  border-color: color-mix(in srgb, var(--nm-green) 18%, var(--line));
+  background: color-mix(in srgb, var(--nm-green) 4%, var(--paper));
+}
+
+.impostor-reveal-card {
+  border-color: color-mix(in srgb, var(--nm-coral) 23%, var(--line)) !important;
+  background: color-mix(in srgb, var(--nm-coral) 5%, var(--paper)) !important;
+}
+
+.secret-reveal strong {
+  color: color-mix(in srgb, var(--nm-cyan) 75%, var(--ink));
+}
+
+.round-ranking > div > span:first-child {
+  border-color: color-mix(in srgb, var(--nm-amber) 30%, var(--line));
+  background: color-mix(in srgb, var(--nm-amber) 7%, var(--paper));
+}
+
+.round-ranking > div > span:first-child b {
+  color: var(--nm-amber);
+}
+
+.phase-results .primary-button {
+  background: linear-gradient(105deg, #00b862, var(--nm-green), #4bf196);
+  color: #04170d;
+  box-shadow: 0 8px 0 #008e4b, 0 18px 38px color-mix(in srgb, var(--nm-green) 20%, transparent);
+}
+
+/* Toasts / modais / conexão */
+.toast.success {
+  border-color: color-mix(in srgb, var(--nm-green) 32%, var(--line));
+  background: color-mix(in srgb, var(--nm-green) 8%, var(--paper));
+}
+
+.toast.error {
+  border-color: color-mix(in srgb, var(--nm-coral) 35%, var(--line));
+  background: color-mix(in srgb, var(--nm-coral) 8%, var(--paper));
+}
+
+.rules-modal,
+.leave-confirm-dialog {
+  border-color: color-mix(in srgb, var(--nm-violet) 28%, var(--line)) !important;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--nm-violet) 8%, transparent), transparent 34%),
+    var(--paper) !important;
+  box-shadow: 0 30px 90px rgba(3,4,22,.36) !important;
+}
+
+/* Animações de identidade */
+@keyframes nm-hud-scan {
+  0%, 100% { transform: translateX(-58%); opacity: .2; }
+  50% { transform: translateX(58%); opacity: .92; }
+}
+
+@keyframes nm-step-energy {
+  0%, 100% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--step-color) 8%, transparent), 0 0 17px color-mix(in srgb, var(--step-color) 24%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--step-color) 4%, transparent), 0 0 30px color-mix(in srgb, var(--step-color) 38%, transparent); }
+}
+
+.phase-step.active > span {
+  animation: nm-step-energy 2.1s ease-in-out infinite;
+}
+
+/* Responsividade */
+@media (max-width: 900px) {
+  .phase-lobby .settings-card {
+    grid-template-columns: 1fr;
+  }
+  .phase-lobby .settings-title { grid-column: 1; }
+  .phase-lobby .setting-row {
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-shell {
+    padding-inline: 12px;
+  }
+
+  .brand {
+    font-size: 18px;
+  }
+
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .game-wrap > .room-header.panel,
+  .game-wrap > .phase-rail.panel {
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--phase-accent) 8%, transparent);
+  }
+
+  .phase-step > div small {
+    opacity: .68;
+  }
+
+  .phase-step.active strong {
+    font-weight: 950;
+  }
+
+  .phase-lobby .lobby-intro {
+    padding: 15px 16px 15px 19px;
+  }
+
+  .phase-lobby .setting-row {
+    padding: 11px;
+  }
+
+  .phase-lobby .setting-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    font-size: 16px;
+  }
+
+  .room-code-block strong {
+    letter-spacing: .12em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-wrap > .room-header.panel::after,
+  .phase-step.active > span {
+    animation: none !important;
+  }
+}
