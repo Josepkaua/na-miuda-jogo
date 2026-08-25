@@ -1,0 +1,211 @@
+/* Chrome da partida: preserva a landing espaçosa e libera área útil quando há jogo ativo. */
+
+:root[data-game-phase] .topbar {
+  min-height: 68px;
+  transition: min-height .22s ease;
+}
+
+:root[data-game-phase] .brand {
+  gap: 8px;
+  font-size: 20px;
+}
+
+:root[data-game-phase] .brand-logo {
+  width: 42px;
+  height: 42px;
+  filter: drop-shadow(0 6px 9px rgba(6,44,50,.15));
+}
+
+:root[data-game-phase] .topbar-actions {
+  gap: 7px;
+}
+
+:root[data-game-phase] .theme-trigger {
+  height: 36px;
+  min-width: 104px;
+}
+
+:root[data-game-phase] .rules-button {
+  padding: 8px 7px;
+  border-radius: 10px;
+  transition: color .16s ease, background .16s ease, transform .16s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game-phase] .rules-button:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--phase-accent) 7%, transparent);
+    transform: translateY(-1px);
+  }
+}
+
+:root[data-game-phase] .game-wrap {
+  margin-top: 8px;
+}
+
+/* Menus de apoio entram com a mesma linguagem das fases. */
+:root[data-game-phase] .theme-menu {
+  border-color: color-mix(in srgb, var(--phase-accent) 26%, var(--line));
+  transform-origin: right top;
+  animation: utility-menu-in .17s cubic-bezier(.18,.84,.24,1.08) both;
+}
+
+.modal-backdrop {
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  animation: modal-backdrop-in .18s ease-out both;
+}
+
+.rules-modal {
+  animation: rules-modal-in .26s cubic-bezier(.18,.86,.24,1.08) both;
+}
+
+.modal-close {
+  transition: transform .15s ease, background .15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .modal-close:hover {
+    transform: rotate(6deg) scale(1.05);
+    background: color-mix(in srgb, var(--danger) 10%, var(--soft));
+  }
+}
+
+/* Feedback tátil visual consistente para controles importantes. */
+.game-wrap button,
+.entry-card button,
+.topbar-actions button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-wrap button:not(:disabled):active,
+.entry-card button:not(:disabled):active {
+  transform: translateY(1px) scale(.985);
+}
+
+/* Votação no celular: confirmar nunca deve sumir abaixo da lista. */
+@media (max-width: 700px), (hover: none) and (pointer: coarse) {
+  :root[data-game-phase] .topbar {
+    min-height: 58px;
+  }
+
+  :root[data-game-phase] .brand {
+    gap: 6px;
+    font-size: 17px;
+  }
+
+  :root[data-game-phase] .brand-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  :root[data-game-phase] .rules-button {
+    font-size: 10px;
+    padding-inline: 5px;
+  }
+
+  :root[data-game-phase] .theme-trigger {
+    min-width: 88px;
+    height: 34px;
+    padding-inline: 9px;
+  }
+
+  :root[data-game-phase] .theme-trigger strong {
+    font-size: 9px;
+  }
+
+  .phase-voting .vote-actions {
+    position: sticky;
+    z-index: 12;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    margin: 14px -5px 0;
+    padding: 8px;
+    border: 1px solid color-mix(in srgb, var(--phase-accent) 32%, var(--line));
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--paper) 93%, transparent);
+    box-shadow: 0 14px 34px rgba(3,34,41,.16);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .phase-voting .vote-actions button {
+    min-height: 46px;
+  }
+
+  .phase-lobby .lobby-actions {
+    position: sticky;
+    z-index: 9;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    margin-inline: -5px;
+    padding: 8px;
+    border: 1px solid color-mix(in srgb, var(--phase-accent) 26%, var(--line));
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--paper) 94%, transparent);
+    box-shadow: 0 12px 30px rgba(3,34,41,.13);
+    backdrop-filter: blur(11px);
+    -webkit-backdrop-filter: blur(11px);
+  }
+
+  .phase-lobby .lobby-actions button {
+    min-height: 46px;
+  }
+}
+
+@media (max-width: 430px) {
+  :root[data-game-phase] .topbar {
+    min-height: 54px;
+  }
+
+  :root[data-game-phase] .brand-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  :root[data-game-phase] .brand {
+    font-size: 0;
+  }
+
+  :root[data-game-phase] .brand-logo {
+    margin-right: 1px;
+  }
+
+  :root[data-game-phase] .topbar-actions {
+    gap: 4px;
+  }
+
+  :root[data-game-phase] .rules-button {
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@keyframes utility-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rules-modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-game-phase] .theme-menu,
+  .modal-backdrop,
+  .rules-modal {
+    animation: none !important;
+  }
+
+  :root[data-game-phase] .topbar,
+  .rules-button,
+  .modal-close {
+    transition: none !important;
+  }
+}
