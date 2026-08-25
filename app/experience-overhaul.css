@@ -1,0 +1,705 @@
+/* Polimento global do Na Miúda!: uma linguagem visual coerente entre lobby, segredo, discussão, votação e resultado. */
+
+:root {
+  --phase-accent: var(--lime);
+  --phase-accent-soft: color-mix(in srgb, var(--lime) 12%, transparent);
+  --phase-accent-line: color-mix(in srgb, var(--lime) 36%, var(--line));
+}
+
+:root[data-game-phase="lobby"] {
+  --phase-accent: #a9dc32;
+  --phase-accent-soft: color-mix(in srgb, #a9dc32 13%, transparent);
+  --phase-accent-line: color-mix(in srgb, #a9dc32 40%, var(--line));
+}
+
+:root[data-game-phase="reveal"] {
+  --phase-accent: #8fd9ff;
+  --phase-accent-soft: color-mix(in srgb, #8fd9ff 12%, transparent);
+  --phase-accent-line: color-mix(in srgb, #8fd9ff 38%, var(--line));
+}
+
+:root[data-game-phase="discussion"] {
+  --phase-accent: #c8f43d;
+  --phase-accent-soft: color-mix(in srgb, #c8f43d 11%, transparent);
+  --phase-accent-line: color-mix(in srgb, #c8f43d 36%, var(--line));
+}
+
+:root[data-game-phase="voting"] {
+  --phase-accent: #ffb25e;
+  --phase-accent-soft: color-mix(in srgb, #ffb25e 11%, transparent);
+  --phase-accent-line: color-mix(in srgb, #ffb25e 39%, var(--line));
+}
+
+:root[data-game-phase="results"] {
+  --phase-accent: #f7dc64;
+  --phase-accent-soft: color-mix(in srgb, #f7dc64 13%, transparent);
+  --phase-accent-line: color-mix(in srgb, #f7dc64 40%, var(--line));
+}
+
+/* Superfícies ganham profundidade sem virar vidro genérico. */
+.game-wrap .panel,
+.entry-card {
+  border-color: color-mix(in srgb, var(--line) 78%, var(--phase-accent-line));
+}
+
+.game-grid > .panel {
+  position: relative;
+  isolation: isolate;
+}
+
+.game-grid > .panel::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 14% 0%, var(--phase-accent-soft), transparent 36%);
+  opacity: .78;
+}
+
+.game-wrap > .room-header.panel,
+.game-wrap > .phase-rail.panel {
+  border-color: var(--phase-accent-line);
+}
+
+.game-wrap > .phase-rail .phase-step.active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-accent) 18%, transparent), 0 8px 20px rgba(3, 34, 41, .14);
+}
+
+.game-wrap > .phase-rail .phase-step.active > span {
+  background: var(--phase-accent);
+}
+
+/* Landing: menos estática e com foco maior na ação principal. */
+.hero-copy h1,
+.hero-copy > p,
+.proof-row,
+.category-preview,
+.entry-card {
+  animation: experience-rise .5s cubic-bezier(.18,.82,.24,1) both;
+}
+
+.hero-copy > p { animation-delay: .04s; }
+.proof-row { animation-delay: .08s; }
+.category-preview { animation-delay: .12s; }
+.entry-card { animation-delay: .09s; }
+
+.category-preview > span {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .category-preview > span:hover {
+    transform: translateY(-4px) rotate(0) scale(1.06);
+    border-color: color-mix(in srgb, var(--lime) 55%, var(--line));
+    box-shadow: 0 10px 24px rgba(6,44,50,.12);
+  }
+}
+
+.entry-card {
+  box-shadow: 0 26px 72px rgba(6,44,50,.14), 0 0 0 1px color-mix(in srgb, var(--lime) 6%, transparent);
+}
+
+.entry-tabs button.active {
+  position: relative;
+  overflow: hidden;
+}
+
+.entry-tabs button.active::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--lime);
+  animation: tab-mark-in .22s ease-out both;
+}
+
+.text-input:focus,
+.code-input:focus,
+.wide-select:focus,
+.quick-settings select:focus,
+.chat-composer input:focus {
+  transform: translateY(-1px);
+}
+
+.primary-button,
+.secondary-button,
+.ready-button,
+.ghost-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-button::after,
+.secondary-button::after,
+.ready-button::after {
+  content: "";
+  position: absolute;
+  top: -80%;
+  bottom: -80%;
+  left: -45%;
+  width: 28%;
+  transform: rotate(17deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+  opacity: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary-button:hover:not(:disabled)::after,
+  .secondary-button:hover:not(:disabled)::after,
+  .ready-button:hover:not(:disabled)::after {
+    opacity: 1;
+    animation: action-sheen .48s ease-out;
+  }
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.ready-button:disabled,
+.ghost-button:disabled {
+  cursor: not-allowed;
+  filter: saturate(.72);
+}
+
+/* Toda fase entra em blocos, sem esconder conteúdo importante. */
+.game-grid:not(.phase-discussion) .main-panel > .phase-content {
+  animation: phase-content-enter .36s cubic-bezier(.18,.84,.24,1.05) both;
+}
+
+.phase-content > h3 {
+  text-wrap: balance;
+}
+
+.phase-description,
+.waiting-copy {
+  text-wrap: pretty;
+}
+
+/* Lobby: preparação precisa parecer parte do jogo. */
+.phase-lobby .lobby-content {
+  max-width: 790px;
+  margin-inline: auto;
+}
+
+.phase-lobby .lobby-intro {
+  position: relative;
+  padding-left: 18px;
+}
+
+.phase-lobby .lobby-intro::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  bottom: 3px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(var(--phase-accent), color-mix(in srgb, var(--phase-accent) 18%, transparent));
+  animation: lobby-beacon 2.2s ease-in-out infinite;
+}
+
+.phase-lobby .settings-card {
+  background: color-mix(in srgb, var(--paper) 94%, var(--phase-accent-soft));
+  box-shadow: 0 12px 30px rgba(6,44,50,.06);
+}
+
+.phase-lobby .setting-row {
+  transition: background .17s ease, transform .17s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phase-lobby .setting-row:hover {
+    background: color-mix(in srgb, var(--phase-accent) 5%, var(--paper));
+    transform: translateX(3px);
+  }
+}
+
+.phase-lobby .setting-icon {
+  transition: transform .2s cubic-bezier(.2,.85,.24,1.18);
+}
+
+.phase-lobby .setting-row:hover .setting-icon {
+  transform: rotate(-6deg) scale(1.09);
+}
+
+.phase-lobby .ready-box {
+  border-color: var(--phase-accent-line);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--phase-accent) 8%, var(--paper)), var(--paper));
+}
+
+.phase-lobby .ready-box:has(.ready-bar i[style*="100%"]),
+.phase-lobby .ready-box:has(.ready-bar i[style*="99%"] ) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--phase-accent) 9%, transparent), 0 12px 28px rgba(6,44,50,.08);
+}
+
+.phase-lobby .lobby-actions .primary-button:not(:disabled) {
+  animation: start-ready-pulse 2.2s ease-in-out infinite;
+}
+
+/* Segredo: tensão, privacidade e progresso de leitura. */
+.phase-reveal .main-panel {
+  overflow: hidden;
+}
+
+.phase-reveal .centered-phase {
+  min-height: 560px;
+}
+
+.phase-reveal .phase-icon {
+  position: relative;
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--phase-accent) 18%, transparent);
+}
+
+.phase-reveal .phase-icon::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 1px dashed color-mix(in srgb, var(--phase-accent) 46%, transparent);
+  border-radius: 25px;
+  animation: secret-orbit 7s linear infinite;
+}
+
+.phase-reveal .role-card {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--phase-accent-line);
+  box-shadow: 0 20px 44px rgba(6,44,50,.12);
+  transform-style: preserve-3d;
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+}
+
+.phase-reveal .role-card:not(.revealed)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--phase-accent) 16%, transparent) 50%, transparent 65%);
+  transform: translateX(-110%);
+  animation: secret-scan 2.8s ease-in-out infinite;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phase-reveal .role-card:hover:not(:disabled) {
+    transform: translateY(-5px) rotateX(2deg);
+    box-shadow: 0 28px 60px rgba(6,44,50,.16);
+  }
+}
+
+.phase-reveal .role-card.revealed {
+  border-style: solid;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--phase-accent) 7%, var(--paper)), var(--paper));
+  animation: role-lock-in .46s cubic-bezier(.16,.9,.24,1.18) both;
+}
+
+.phase-reveal .seen-progress {
+  padding: 7px 12px;
+  border: 1px solid var(--phase-accent-line);
+  border-radius: 999px;
+  background: var(--phase-accent-soft);
+  font-weight: 900;
+}
+
+/* Discussão: chat segue dominante; lateral parece HUD de apoio. */
+.phase-discussion .chat-panel {
+  border-color: var(--phase-accent-line);
+}
+
+.phase-discussion .chat-heading::after {
+  content: "";
+  display: block;
+  width: 42px;
+  height: 3px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: var(--phase-accent);
+  animation: chat-status-line 2.4s ease-in-out infinite;
+}
+
+.phase-discussion .chat-message p {
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phase-discussion .chat-message:hover p {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(6,44,50,.07);
+  }
+}
+
+.phase-discussion .timer-ring.is-warning {
+  box-shadow: 0 0 0 7px color-mix(in srgb, #ffb25e 8%, transparent);
+}
+
+.phase-discussion .timer-ring.is-critical {
+  animation: critical-clock .72s ease-in-out infinite !important;
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 9%, transparent);
+}
+
+.phase-discussion .tip-box {
+  border-color: color-mix(in srgb, var(--phase-accent) 25%, var(--line));
+}
+
+/* Votação: seleção vira um compromisso visual claro. */
+.phase-voting .main-panel {
+  overflow: hidden;
+}
+
+.phase-voting .vote-copy {
+  padding-left: 12px;
+  border-left: 3px solid var(--phase-accent);
+}
+
+.phase-voting .vote-grid {
+  perspective: 900px;
+}
+
+.phase-voting .vote-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 68px;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.phase-voting .vote-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 10% 10%, var(--phase-accent-soft), transparent 44%);
+  opacity: 0;
+  transition: opacity .16s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phase-voting .vote-card:hover:not(:disabled) {
+    transform: translateY(-3px) rotateX(1deg);
+    border-color: var(--phase-accent-line);
+    box-shadow: 0 12px 26px rgba(6,44,50,.10);
+  }
+  .phase-voting .vote-card:hover:not(:disabled)::before { opacity: 1; }
+}
+
+.phase-voting .vote-card.selected {
+  transform: translateY(-2px) scale(1.012);
+  border-color: var(--phase-accent);
+  background: color-mix(in srgb, var(--phase-accent) 10%, var(--paper));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--phase-accent) 13%, transparent), 0 14px 30px rgba(6,44,50,.11);
+  animation: vote-lock .3s cubic-bezier(.18,.9,.24,1.2) both;
+}
+
+.phase-voting .vote-card.selected i {
+  background: var(--phase-accent);
+  border-color: var(--phase-accent);
+}
+
+.phase-voting .vote-progress {
+  border-color: var(--phase-accent-line);
+  background: color-mix(in srgb, var(--phase-accent) 8%, var(--paper));
+}
+
+.phase-voting .vote-progress > div i {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--phase-accent) 75%, var(--deep-2)), var(--phase-accent));
+  position: relative;
+  overflow: hidden;
+}
+
+.phase-voting .vote-progress > div i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+  animation: vote-progress-shine 1.8s ease-in-out infinite;
+}
+
+.phase-voting.is-time-critical .vote-progress {
+  animation: vote-urgency .78s ease-in-out infinite;
+}
+
+/* Resultado: recompensa visual e ranking com hierarquia. */
+.phase-results .main-panel {
+  overflow: hidden;
+}
+
+.phase-results .results-content {
+  max-width: 840px;
+  margin-inline: auto;
+}
+
+.phase-results .result-burst {
+  position: relative;
+}
+
+.phase-results .result-burst::after {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+  border-radius: 50%;
+  border: 2px dashed color-mix(in srgb, var(--phase-accent) 45%, transparent);
+  animation: result-halo 8s linear infinite;
+}
+
+.phase-results .result-evidence > div {
+  border-color: var(--phase-accent-line);
+  box-shadow: 0 12px 30px rgba(6,44,50,.08);
+}
+
+.phase-results .round-ranking > div {
+  align-items: stretch;
+}
+
+.phase-results .round-ranking > div > span {
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.phase-results .round-ranking > div > span:nth-child(1) {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, #f7dc64 58%, var(--line));
+  background: color-mix(in srgb, #f7dc64 9%, var(--paper));
+  box-shadow: 0 12px 26px rgba(6,44,50,.10);
+}
+
+.phase-results .round-ranking > div > span:nth-child(1)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 3px;
+  border-radius: 0 0 999px 999px;
+  background: #f7dc64;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phase-results .round-ranking > div > span:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(6,44,50,.10);
+  }
+  .phase-results .round-ranking > div > span:nth-child(1):hover { transform: translateY(-6px); }
+}
+
+.phase-results .points-note {
+  border-color: var(--phase-accent-line);
+  background: color-mix(in srgb, var(--phase-accent) 7%, var(--paper));
+}
+
+/* Lista de jogadores: estado legível mesmo em partidas longas. */
+.players-panel .player-row {
+  position: relative;
+  border-radius: 12px;
+  transition: background .16s ease, transform .16s ease, opacity .16s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .players-panel .player-row:hover {
+    background: color-mix(in srgb, var(--phase-accent) 5%, transparent);
+    transform: translateX(2px);
+  }
+}
+
+.players-panel .status-dot.online {
+  position: relative;
+}
+
+.players-panel .status-dot.online::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 1px solid color-mix(in srgb, #66bd78 55%, transparent);
+  border-radius: 50%;
+  animation: online-radar 2.1s ease-out infinite;
+}
+
+.player-row.leader .leader-crown {
+  display: inline-block;
+  animation: crown-float 2.4s ease-in-out infinite;
+}
+
+.player-score.score-changed {
+  animation: score-bump .52s cubic-bezier(.16,.9,.24,1.22) both;
+}
+
+.player-row.player-state-changed {
+  animation: player-state-flash .5s ease-out both;
+}
+
+/* Estados de carregamento e mensagens vazias também têm acabamento. */
+.chat-empty > span,
+.chat-empty > strong,
+.chat-empty > p {
+  animation: empty-state-in .35s ease-out both;
+}
+.chat-empty > strong { animation-delay: .04s; }
+.chat-empty > p { animation-delay: .08s; }
+
+.form-message.success,
+.form-message.error {
+  animation: feedback-in .25s cubic-bezier(.18,.86,.24,1.08) both;
+}
+
+button[disabled] {
+  transition: opacity .18s ease, filter .18s ease;
+}
+
+/* Teclado e acessibilidade. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--phase-accent) 44%, transparent);
+  outline-offset: 3px;
+}
+
+/* Responsividade: no celular, movimento não pode roubar espaço. */
+@media (max-width: 900px) {
+  .game-grid:not(.phase-discussion) .main-panel { min-height: 0; }
+  .phase-reveal .centered-phase { min-height: 470px; }
+  .phase-lobby .lobby-intro { padding-left: 13px; }
+  .phase-voting .vote-card { min-height: 62px; }
+}
+
+@media (max-width: 600px) {
+  .hero-copy h1,
+  .hero-copy > p,
+  .proof-row,
+  .category-preview,
+  .entry-card { animation-duration: .32s; }
+
+  .phase-lobby .settings-card { margin-block: 16px; }
+  .phase-lobby .setting-row { padding: 11px 12px; }
+  .phase-reveal .centered-phase { min-height: 420px; }
+  .phase-reveal .role-card { min-height: 170px; }
+  .phase-voting .vote-grid { grid-template-columns: 1fr; gap: 8px; }
+  .phase-voting .vote-card { min-height: 58px; }
+  .phase-results .round-ranking > div > span:nth-child(1) { transform: none; }
+}
+
+@keyframes experience-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tab-mark-in {
+  from { transform: scaleX(.2); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+@keyframes action-sheen {
+  from { left: -45%; }
+  to { left: 130%; }
+}
+@keyframes phase-content-enter {
+  from { opacity: .45; transform: translateY(8px) scale(.992); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lobby-beacon {
+  0%,100% { opacity: .58; transform: scaleY(.86); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+@keyframes start-ready-pulse {
+  0%,100% { box-shadow: 0 8px 0 #032229, 0 0 0 0 color-mix(in srgb, var(--phase-accent) 20%, transparent); }
+  50% { box-shadow: 0 8px 0 #032229, 0 0 0 7px transparent; }
+}
+@keyframes secret-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes secret-scan {
+  0%,28% { transform: translateX(-110%); }
+  72%,100% { transform: translateX(110%); }
+}
+@keyframes role-lock-in {
+  0% { opacity: .7; transform: rotateY(5deg) scale(.97); }
+  65% { transform: rotateY(0) scale(1.018); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes chat-status-line {
+  0%,100% { width: 34px; opacity: .62; }
+  50% { width: 56px; opacity: 1; }
+}
+@keyframes critical-clock {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+@keyframes vote-lock {
+  from { transform: scale(.97); }
+  to { transform: translateY(-2px) scale(1.012); }
+}
+@keyframes vote-progress-shine {
+  0%,30% { transform: translateX(-110%); }
+  70%,100% { transform: translateX(110%); }
+}
+@keyframes vote-urgency {
+  0%,100% { box-shadow: 0 8px 20px rgba(6,44,50,.07), 0 0 0 0 color-mix(in srgb, var(--danger) 13%, transparent); }
+  50% { box-shadow: 0 8px 20px rgba(6,44,50,.07), 0 0 0 5px transparent; }
+}
+@keyframes result-halo {
+  to { transform: rotate(360deg); }
+}
+@keyframes online-radar {
+  0% { opacity: .8; transform: scale(.72); }
+  80%,100% { opacity: 0; transform: scale(1.42); }
+}
+@keyframes crown-float {
+  0%,100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-2px) rotate(4deg); }
+}
+@keyframes score-bump {
+  0% { transform: scale(.88); }
+  55% { transform: scale(1.18) rotate(-2deg); }
+  100% { transform: scale(1); }
+}
+@keyframes player-state-flash {
+  0% { background: color-mix(in srgb, var(--phase-accent) 16%, transparent); transform: translateX(-2px); }
+  100% { background: transparent; transform: none; }
+}
+@keyframes empty-state-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes feedback-in {
+  from { opacity: 0; transform: translateY(-5px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy h1,
+  .hero-copy > p,
+  .proof-row,
+  .category-preview,
+  .entry-card,
+  .game-grid:not(.phase-discussion) .main-panel > .phase-content,
+  .phase-lobby .lobby-intro::before,
+  .phase-lobby .lobby-actions .primary-button:not(:disabled),
+  .phase-reveal .phase-icon::after,
+  .phase-reveal .role-card:not(.revealed)::before,
+  .phase-reveal .role-card.revealed,
+  .phase-discussion .chat-heading::after,
+  .phase-discussion .timer-ring.is-critical,
+  .phase-voting .vote-card.selected,
+  .phase-voting .vote-progress > div i::after,
+  .phase-voting.is-time-critical .vote-progress,
+  .phase-results .result-burst::after,
+  .players-panel .status-dot.online::after,
+  .player-row.leader .leader-crown,
+  .player-score.score-changed,
+  .player-row.player-state-changed,
+  .chat-empty > span,
+  .chat-empty > strong,
+  .chat-empty > p,
+  .form-message.success,
+  .form-message.error {
+    animation: none !important;
+  }
+
+  .setting-row,
+  .vote-card,
+  .role-card,
+  .player-row,
+  .category-preview > span {
+    transform: none !important;
+  }
+}
