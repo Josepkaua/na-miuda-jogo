@@ -83,6 +83,10 @@ function isEditable(element: Element | null) {
     || (element instanceof HTMLElement && element.isContentEditable);
 }
 
+function sameNames(a: string[], b: string[]) {
+  return a.length === b.length && a.every((name, index) => name === b[index]);
+}
+
 export default function ChatFocusPresence() {
   useSyncExternalStore(subscribeDom, getDomVersion, () => 0);
   const composer = getComposer();
@@ -157,12 +161,14 @@ export default function ChatFocusPresence() {
     const typing = new Map<string, TypingEntry>();
     let channel: RealtimeChannel | null = null;
     let lastTypingSentAt = 0;
+    let localTypingActive = false;
     let subscribed = false;
 
     const syncTypingNames = () => {
-      setTypingState({
-        roomCode,
-        names: Array.from(typing.values(), (entry) => entry.nickname).slice(0, 3),
+      const names = Array.from(typing.values(), (entry) => entry.nickname).slice(0, 3);
+      setTypingState((current) => {
+        if (current.roomCode === roomCode && sameNames(current.names, names)) return current;
+        return { roomCode, names };
       });
     };
 
@@ -206,26 +212,36 @@ export default function ChatFocusPresence() {
       });
     };
 
+    const startTyping = () => {
+      const now = Date.now();
+      if (localTypingActive && now - lastTypingSentAt < 650) return;
+      localTypingActive = true;
+      lastTypingSentAt = now;
+      sendTyping(true);
+    };
+
+    const stopTyping = () => {
+      if (!localTypingActive) return;
+      localTypingActive = false;
+      sendTyping(false);
+    };
+
     channel = supabase
       .channel(`na-miuda-typing-${roomCode}`, { config: { broadcast: { self: false } } })
       .on("broadcast", { event: "typing" }, ({ payload }) => handleTypingPayload(payload));
     channel.subscribe((status) => {
       subscribed = status === "SUBSCRIBED";
-      if (subscribed && input.value.trim()) sendTyping(true);
+      if (subscribed && input.value.trim()) startTyping();
     });
 
     const onInput = () => {
       if (!input.value.trim()) {
-        sendTyping(false);
+        stopTyping();
         return;
       }
-      const now = Date.now();
-      if (now - lastTypingSentAt < 650) return;
-      lastTypingSentAt = now;
-      sendTyping(true);
+      startTyping();
     };
 
-    const stopTyping = () => sendTyping(false);
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") stopTyping();
     };
@@ -236,6 +252,7 @@ export default function ChatFocusPresence() {
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
+      stopTyping();
       input.removeEventListener("input", onInput);
       input.removeEventListener("blur", stopTyping);
       composer.removeEventListener("submit", stopTyping);
