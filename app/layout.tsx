@@ -12,6 +12,7 @@ import "./game-experience-chrome.css";
 import "./automatic-mechanics-ui.css";
 import "./interaction-safety.css";
 import "./neon-identity.css";
+import "./neon-identity-extras.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
