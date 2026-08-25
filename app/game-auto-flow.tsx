@@ -35,6 +35,18 @@ export default function GameAutoFlow() {
   const revealLocks = useRef(new Set<string>());
 
   useEffect(() => {
+    const timers = new Set<number>();
+    let inspectFrame: number | null = null;
+
+    const later = (callback: () => void, delay: number) => {
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        callback();
+      }, delay);
+      timers.add(timer);
+      return timer;
+    };
+
     const inspect = () => {
       const key = readRoundKey();
       if (!key) {
@@ -50,13 +62,13 @@ export default function GameAutoFlow() {
       if (button.disabled) {
         if (!revealLocks.current.has(key) && revealHostCardIfNeeded()) {
           revealLocks.current.add(key);
-          window.setTimeout(() => revealLocks.current.delete(key), 900);
+          later(() => revealLocks.current.delete(key), 900);
         }
         return;
       }
 
       locks.current.add(key);
-      window.setTimeout(() => {
+      later(() => {
         if (!button.isConnected || button.disabled) {
           locks.current.delete(key);
           return;
@@ -65,8 +77,16 @@ export default function GameAutoFlow() {
       }, 420);
     };
 
+    const scheduleInspect = () => {
+      if (inspectFrame !== null) return;
+      inspectFrame = window.requestAnimationFrame(() => {
+        inspectFrame = null;
+        inspect();
+      });
+    };
+
     inspect();
-    const observer = new MutationObserver(inspect);
+    const observer = new MutationObserver(scheduleInspect);
     observer.observe(document.body, {
       childList: true,
       subtree: true,
@@ -75,7 +95,12 @@ export default function GameAutoFlow() {
       attributeFilter: ["class", "disabled"],
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (inspectFrame !== null) window.cancelAnimationFrame(inspectFrame);
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers.clear();
+    };
   }, []);
 
   return null;
