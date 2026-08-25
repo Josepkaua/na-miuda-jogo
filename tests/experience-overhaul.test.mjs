@@ -7,10 +7,12 @@ test("loads the global experience polish after the existing refinement layers", 
   const hudIndex = layout.indexOf('import "./game-hud-refinement.css"');
   const presenceIndex = layout.indexOf('import "./chat-focus-presence.css"');
   const overhaulIndex = layout.indexOf('import "./experience-overhaul.css"');
+  const chromeIndex = layout.indexOf('import "./game-experience-chrome.css"');
 
   assert.ok(hudIndex >= 0);
   assert.ok(presenceIndex > hudIndex);
   assert.ok(overhaulIndex > presenceIndex);
+  assert.ok(chromeIndex > overhaulIndex);
 });
 
 test("gives every gameplay phase its own visual identity without changing phase mechanics", async () => {
@@ -66,6 +68,18 @@ test("keeps the most important game feedback animated but respects reduced motio
   assert.match(css, /@keyframes result-halo/);
   assert.match(css, /@keyframes score-bump/);
   assert.match(css, /\.player-score\.score-changed/);
+});
+
+test("compacts the global game chrome and keeps primary mobile actions reachable", async () => {
+  const css = await readFile(new URL("../app/game-experience-chrome.css", import.meta.url), "utf8");
+
+  assert.match(css, /:root\[data-game-phase\] \.topbar[\s\S]*min-height:\s*68px/);
+  assert.match(css, /:root\[data-game-phase\] \.brand-logo[\s\S]*width:\s*42px/);
+  assert.match(css, /\.phase-voting \.vote-actions[\s\S]*position:\s*sticky/);
+  assert.match(css, /\.phase-lobby \.lobby-actions[\s\S]*position:\s*sticky/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /\.modal-backdrop[\s\S]*backdrop-filter:\s*blur\(7px\)/);
+  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/);
 });
 
 test("presents Na Miuda as a standalone game app with branded metadata", async () => {
