@@ -40,6 +40,17 @@ export default function InteractionSafety() {
   }, []);
 
   useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!document.querySelector(".game-wrap")) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  useEffect(() => {
     if (!leaveButton) return;
     const dialog = leaveDialog.current;
     if (!dialog) return;
