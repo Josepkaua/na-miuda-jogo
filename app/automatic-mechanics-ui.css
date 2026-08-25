@@ -1,0 +1,41 @@
+.automatic-mechanics-status {
+  width: min(520px, 100%);
+  margin: 14px auto 0;
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--lime) 34%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--lime) 7%, var(--paper));
+  color: color-mix(in srgb, var(--ink) 82%, var(--muted));
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(6, 44, 50, .05);
+  animation: automatic-status-in .28s cubic-bezier(.2,.8,.24,1) both;
+}
+
+.phase-discussion .automatic-mechanics-status {
+  margin-top: 10px;
+  background: color-mix(in srgb, var(--paper) 93%, transparent);
+}
+
+.phase-voting .automatic-mechanics-status {
+  margin-top: 12px;
+}
+
+@keyframes automatic-status-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .automatic-mechanics-status {
+    margin-top: 10px;
+    padding: 9px 11px;
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .automatic-mechanics-status { animation: none !important; }
+}
