@@ -16,6 +16,8 @@ test("protects players from leaving an active room by accident", async () => {
   assert.match(component, /Sair desta sala\?/);
   assert.match(component, /Continuar jogando/);
   assert.match(component, /bypassLeave/);
+  assert.match(component, /beforeunload/);
+  assert.match(component, /event\.returnValue = ""/);
   assert.match(css, /\.leave-confirm-backdrop/);
 });
 
