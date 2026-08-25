@@ -40,6 +40,22 @@ test("motion controller exposes phase state and animates meaningful player chang
   assert.match(controller, /attributeFilter:\s*\["class", "disabled", "style"\]/);
 });
 
+test("coalesces motion and automatic-flow DOM mutations into animation frames", async () => {
+  const motion = await readFile(new URL("../app/game-motion-controller.tsx", import.meta.url), "utf8");
+  const autoFlow = await readFile(new URL("../app/game-auto-flow.tsx", import.meta.url), "utf8");
+
+  for (const source of [motion, autoFlow]) {
+    assert.match(source, /let inspectFrame: number \| null = null/);
+    assert.match(source, /const scheduleInspect = \(\) =>/);
+    assert.match(source, /window\.requestAnimationFrame\(\(\) =>/);
+    assert.match(source, /new MutationObserver\(scheduleInspect\)/);
+    assert.match(source, /window\.cancelAnimationFrame\(inspectFrame\)/);
+  }
+
+  assert.match(autoFlow, /const timers = new Set<number>\(\)/);
+  assert.match(autoFlow, /timers\.forEach\(\(timer\) => window\.clearTimeout\(timer\)\)/);
+});
+
 test("keeps the most important game feedback animated but respects reduced motion", async () => {
   const css = await readFile(new URL("../app/experience-overhaul.css", import.meta.url), "utf8");
 
