@@ -15,6 +15,10 @@ type TypingState = {
   names: string[];
 };
 
+let domVersion = 0;
+let sharedDomObserver: MutationObserver | null = null;
+const domSubscribers = new Set<() => void>();
+
 function getComposer() {
   if (typeof document === "undefined") return null;
   return document.querySelector<HTMLFormElement>(".chat-composer");
@@ -30,11 +34,34 @@ function getRoomCode() {
   return document.querySelector<HTMLElement>(".room-code-block strong")?.textContent?.trim() ?? "";
 }
 
+function emitDomChange() {
+  domVersion += 1;
+  domSubscribers.forEach((subscriber) => subscriber());
+}
+
 function subscribeDom(onStoreChange: () => void) {
   if (typeof document === "undefined") return () => {};
-  const observer = new MutationObserver(onStoreChange);
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-  return () => observer.disconnect();
+  domSubscribers.add(onStoreChange);
+
+  if (!sharedDomObserver) {
+    sharedDomObserver = new MutationObserver(emitDomChange);
+    sharedDomObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  return () => {
+    domSubscribers.delete(onStoreChange);
+    if (domSubscribers.size > 0) return;
+    sharedDomObserver?.disconnect();
+    sharedDomObserver = null;
+  };
+}
+
+function getDomVersion() {
+  return domVersion;
 }
 
 function getChatInput(composer: HTMLFormElement | null) {
@@ -57,9 +84,10 @@ function isEditable(element: Element | null) {
 }
 
 export default function ChatFocusPresence() {
-  const composer = useSyncExternalStore(subscribeDom, getComposer, () => null);
-  const chatPanel = useSyncExternalStore(subscribeDom, getChatPanel, () => null);
-  const roomCode = useSyncExternalStore(subscribeDom, getRoomCode, () => "");
+  useSyncExternalStore(subscribeDom, getDomVersion, () => 0);
+  const composer = getComposer();
+  const chatPanel = getChatPanel();
+  const roomCode = getRoomCode();
   const [typingState, setTypingState] = useState<TypingState>({ roomCode: "", names: [] });
   const clientId = useRef<string | null>(null);
 
@@ -168,14 +196,6 @@ export default function ChatFocusPresence() {
       syncTypingNames();
     };
 
-    channel = supabase
-      .channel(`na-miuda-typing-${roomCode}`, { config: { broadcast: { self: false } } })
-      .on("broadcast", { event: "typing" }, ({ payload }) => handleTypingPayload(payload));
-    channel.subscribe((status) => {
-      subscribed = status === "SUBSCRIBED";
-      if (subscribed && input.value.trim()) sendTyping(true);
-    });
-
     const sendTyping = (active: boolean) => {
       if (!channel || !subscribed) return;
       const nickname = localStorage.getItem("na-miuda-nickname")?.trim() || "Alguém";
@@ -185,6 +205,14 @@ export default function ChatFocusPresence() {
         payload: { id: myId, nickname: nickname.slice(0, 20), typing: active },
       });
     };
+
+    channel = supabase
+      .channel(`na-miuda-typing-${roomCode}`, { config: { broadcast: { self: false } } })
+      .on("broadcast", { event: "typing" }, ({ payload }) => handleTypingPayload(payload));
+    channel.subscribe((status) => {
+      subscribed = status === "SUBSCRIBED";
+      if (subscribed && input.value.trim()) sendTyping(true);
+    });
 
     const onInput = () => {
       if (!input.value.trim()) {
@@ -197,13 +225,21 @@ export default function ChatFocusPresence() {
       sendTyping(true);
     };
 
-    const onSubmit = () => sendTyping(false);
+    const stopTyping = () => sendTyping(false);
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") stopTyping();
+    };
+
     input.addEventListener("input", onInput);
-    composer.addEventListener("submit", onSubmit);
+    input.addEventListener("blur", stopTyping);
+    composer.addEventListener("submit", stopTyping);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       input.removeEventListener("input", onInput);
-      composer.removeEventListener("submit", onSubmit);
+      input.removeEventListener("blur", stopTyping);
+      composer.removeEventListener("submit", stopTyping);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       for (const entry of typing.values()) clearTimeout(entry.timer);
       typing.clear();
       if (channel) void supabase.removeChannel(channel);
