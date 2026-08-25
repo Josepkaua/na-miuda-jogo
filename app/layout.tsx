@@ -7,6 +7,7 @@ import "./automatic-flow.css";
 import "./connection-status.css";
 import "./game-hud-refinement.css";
 import "./chat-focus-presence.css";
+import "./experience-overhaul.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";
