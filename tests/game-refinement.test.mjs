@@ -12,7 +12,8 @@ test("keeps the round moving without host shortcuts", async () => {
   ]);
 
   assert.match(autoFlow, /viram o papel/i);
-  assert.match(autoFlow, /revealHostCardIfNeeded/);
+  assert.doesNotMatch(autoFlow, /revealHostCardIfNeeded/);
+  assert.match(autoFlow, /if \(button\.disabled\) button\.disabled = false/);
   assert.match(autoFlow, /button\.click\(\)/);
   assert.match(automaticCss, /discussion-decision-trigger[\s\S]*display:\s*none\s*!important/);
   assert.match(automaticCss, /phase-voting[\s\S]*vote-actions > \.ghost-button[\s\S]*display:\s*none\s*!important/);
