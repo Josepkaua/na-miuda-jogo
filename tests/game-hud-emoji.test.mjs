@@ -30,11 +30,27 @@ test("adds an accessible emoji picker without changing chat transport", async ()
   assert.match(picker, /HTMLInputElement\.prototype/);
   assert.match(picker, /new Event\("input", \{ bubbles: true \}\)/);
   assert.match(picker, /aria-label="Abrir emojis"/);
+  assert.match(picker, /aria-haspopup="menu"/);
   assert.match(picker, /role="menu"/);
   assert.match(picker, /"😂"[\s\S]*"🎭"[\s\S]*"❤️"/);
   assert.match(css, /grid-template-columns:\s*42px minmax\(0, 1fr\) 42px/);
   assert.match(css, /\.emoji-menu/);
   assert.match(css, /\.emoji-grid/);
+});
+
+test("emoji picker closes naturally and supports keyboard navigation", async () => {
+  const picker = await readFile(new URL("../app/chat-emoji-picker.tsx", import.meta.url), "utf8");
+
+  assert.match(picker, /document\.addEventListener\("pointerdown", onPointerDown, true\)/);
+  assert.match(picker, /event\.key !== "Escape"/);
+  assert.match(picker, /returnFocusToChat\(composer\)/);
+  assert.match(picker, /event\.key === "ArrowRight"/);
+  assert.match(picker, /event\.key === "ArrowLeft"/);
+  assert.match(picker, /event\.key === "ArrowDown"/);
+  assert.match(picker, /event\.key === "ArrowUp"/);
+  assert.match(picker, /event\.key === "Home"/);
+  assert.match(picker, /event\.key === "End"/);
+  assert.match(picker, /EMOJI_COLUMNS = 6/);
 });
 
 test("keeps the discussion composer wide and ready for continuous desktop typing", async () => {
