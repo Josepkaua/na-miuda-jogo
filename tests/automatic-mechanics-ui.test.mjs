@@ -19,8 +19,14 @@ test("integrates the automatic mechanics presentation layer", async () => {
 
 test("keeps automatic controllers in the DOM while removing host shortcuts from interaction", async () => {
   const component = await readFile(new URL("../app/automatic-mechanics-ui.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 
+  assert.match(page, /className="phase-content centered-phase discussion-side"/);
+  assert.match(page, /discussion-decision-trigger/);
+  assert.match(page, /Encerrar conversa e votar/);
+  assert.match(page, /Revelar resultado/);
   assert.match(component, /começar pistas/i);
+  assert.match(component, /\.discussion-side/);
   assert.match(component, /\.discussion-decision-trigger/);
   assert.match(component, /votar\|votação/i);
   assert.match(component, /revelar resultado/i);
