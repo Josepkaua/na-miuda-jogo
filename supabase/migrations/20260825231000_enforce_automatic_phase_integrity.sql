@@ -28,7 +28,7 @@ begin
       raise exception 'Aguarde todos os jogadores ativos verem o papel.';
     end if;
   elsif old.phase = 'discussion' and new.phase = 'voting' then
-    if new.discussion_stage is distinct from 'resolved'::public.discussion_stage then
+    if new.discussion_stage is distinct from 'resolved' then
       raise exception 'A votação começa somente pela decisão coletiva da turma.';
     end if;
     if not exists (
