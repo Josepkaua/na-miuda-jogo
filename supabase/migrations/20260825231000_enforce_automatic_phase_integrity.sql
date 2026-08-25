@@ -1,5 +1,4 @@
 -- Make the automatic/collective game flow a database invariant, not only a UI convention.
--- This migration is safe to apply after the frontend no longer exposes manual phase shortcuts.
 
 create or replace function private.enforce_automatic_phase_integrity()
 returns trigger
@@ -33,7 +32,7 @@ begin
     end if;
     if not exists (
       select 1
-      from public.disussion_votes dv
+      from public.discussion_votes dv
       join public.players p on p.id = dv.voter_player_id
       where dv.round_id = old.current_round_id
         and p.left_at is null
@@ -75,61 +74,6 @@ before update of phase on public.rooms
 for each row
 execute function private.enforce_automatic_phase_integrity();
 
--- Leaving must never hand the room to a stale browser session.
-create or replace function public.leave_room(p_code text, p_session_token text)
-returns void
-language plpgsql
-volatile
-security definer
-set search_path = ''
-as $$
-declare
-  target_room public.rooms;
-  player_id uuid;
-  replacement_host uuid;
-begin
-  select * into target_room
-  from public.rooms
-  where code = upper(trim(p_code)) and expires_at > now()
-  for update;
-
-  if target_room.id is null then return; end if;
-  player_id := private.require_player(target_room.id, p_session_token);
-
-  update public.players
-  set left_at = now(), is_ready = false, last_seen_at = now()
-  where id = player_id;
-
-  update public.players
-  set left_at = now(), is_ready = false
-  where room_id = target_room.id
-    and id <> player_id
-    and left_at is null
-    and last_seen_at <= now() - interval '75 seconds';
-
-  if target_room.host_player_id = player_id then
-    select id into replacement_host
-    from public.players
-    where room_id = target_room.id
-      and left_at is null
-      and last_seen_at > now() - interval '75 seconds'
-    order by last_seen_at desc, joined_at
-    limit 1;
-
-    update public.rooms
-    set host_player_id = replacement_host, updated_at = now()
-    where id = target_room.id;
-  else
-    update public.rooms set updated_at = now() where id = target_room.id;
-  end if;
-end;
-$$;
-
-revoke all on function public.leave_room(text, text) from public;
-grant execute on function public.leave_room(text, text) to anon, authenticated;
-
--- Legacy overload with old scoring/flow. It is no longer called by the frontend and had no anon/authenticated grants.
+-- Remove obsolete manual phase APIs after the frontend stops exposing them.
 drop function if exists public.advance_phase(text, text);
-
--- The collective choice opens itself when the discussion clock expires, so the host shortcut is obsolete.
 drop function if exists public.open_discussion_decision(text, text, integer);
