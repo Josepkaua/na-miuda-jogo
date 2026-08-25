@@ -68,6 +68,16 @@ test("keeps the discussion composer wide and ready for continuous desktop typing
   assert.match(focus, /attributeFilter:\s*\["disabled"\]/);
 });
 
+test("shares one DOM observer for chat focus and presence state", async () => {
+  const presence = await readFile(new URL("../app/chat-focus-presence.tsx", import.meta.url), "utf8");
+
+  assert.match(presence, /let sharedDomObserver: MutationObserver \| null = null/);
+  assert.match(presence, /const domSubscribers = new Set<\(\) => void>\(\)/);
+  assert.match(presence, /sharedDomObserver = new MutationObserver\(emitDomChange\)/);
+  assert.match(presence, /useSyncExternalStore\(subscribeDom, getDomVersion/);
+  assert.match(presence, /sharedDomObserver\?\.disconnect\(\)/);
+});
+
 test("shows realtime animated typing presence without a database migration", async () => {
   const presence = await readFile(new URL("../app/chat-focus-presence.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/chat-focus-presence.css", import.meta.url), "utf8");
@@ -77,6 +87,8 @@ test("shows realtime animated typing presence without a database migration", asy
   assert.match(presence, /broadcast:\s*\{ self:\s*false \}/);
   assert.match(presence, /está digitando/);
   assert.match(presence, /1900/);
+  assert.match(presence, /input\.addEventListener\("blur", stopTyping\)/);
+  assert.match(presence, /document\.addEventListener\("visibilitychange", onVisibilityChange\)/);
   assert.match(css, /\.chat-typing-indicator/);
   assert.match(css, /@keyframes typing-dot/);
   assert.match(css, /\.chat-typing-indicator i:nth-of-type\(3\)/);
