@@ -96,10 +96,14 @@ test("presents Na Miuda as a standalone game app with branded metadata", async (
   assert.match(manifest, /display:\s*"standalone"/);
   assert.match(manifest, /lang:\s*"pt-BR"/);
   assert.match(manifest, /categories:\s*\["games", "entertainment", "social"\]/);
+  assert.match(manifest, /background_color:\s*"#060817"/i);
+  assert.match(manifest, /theme_color:\s*"#060817"/i);
   assert.match(manifest, /src:\s*"\/favicon\.svg"/);
   assert.match(manifest, /src:\s*"\/mascote-na-miuda\.png"/);
 
-  assert.match(favicon, /#073D45/);
-  assert.match(favicon, /#C8F43D/);
-  assert.match(favicon, /#76D7FF/);
+  assert.match(favicon, /#060817/i);
+  assert.match(favicon, /#6C5CE7/i);
+  assert.match(favicon, /#00D4FF/i);
+  assert.match(favicon, /#FF4D6D/i);
+  assert.match(favicon, /#FFB800/i);
 });
