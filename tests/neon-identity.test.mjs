@@ -85,14 +85,15 @@ test("uses consistent functional icons for decisions and results", async () => {
 });
 
 test("brands installed app surfaces with the new palette", async () => {
-  const manifest = JSON.parse(await read("public/manifest.webmanifest"));
+  const manifest = await read("app/manifest.ts");
   const favicon = await read("public/favicon.svg");
 
-  assert.equal(manifest.name, "Na Miúda! — Jogo do Impostor");
-  assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.background_color.toLowerCase(), "#060817");
-  assert.equal(manifest.theme_color.toLowerCase(), "#060817");
-  assert.ok(Array.isArray(manifest.icons) && manifest.icons.length >= 2);
+  assert.match(manifest, /name:\s*"Na Miúda! — Jogo do Impostor"/);
+  assert.match(manifest, /display:\s*"standalone"/);
+  assert.match(manifest, /background_color:\s*"#060817"/i);
+  assert.match(manifest, /theme_color:\s*"#060817"/i);
+  assert.match(manifest, /src:\s*"\/favicon\.svg"/);
+  assert.match(manifest, /src:\s*"\/mascote-na-miuda\.png"/);
   assert.match(favicon, /#00D4FF/i);
   assert.match(favicon, /#6C5CE7/i);
   assert.match(favicon, /#FF4D6D/i);
