@@ -60,6 +60,13 @@ test("stages the private word reveal before showing the secret", async () => {
   assert.match(css, /@keyframes cinematic-card-enter/);
 });
 
+test("clears a previous vote before the next round", async () => {
+  const page = await read("app/page.tsx");
+
+  assert.match(page, /setRoleInfo\(null\); setRoleVisible\(false\); setRevealMotion\("idle"\); setSelectedVote\(null\); await callAction\("start_round"\)/);
+  assert.match(page, /if \(snapshot\.phase === "results"\) setSelectedVote\(null\);\s+await callAction\("advance_phase"/);
+});
+
 test("warns remote players about connection loss and recovery", async () => {
   const [component, css] = await Promise.all([
     read("app/connection-status.tsx"),
