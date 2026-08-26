@@ -331,6 +331,7 @@ export default function Home() {
       if (lastSnapshotPhase.current && lastSnapshotPhase.current !== normalized.phase) {
         setRoleVisible(false);
         setRevealMotion("idle");
+        if (normalized.phase === "reveal" || (lastSnapshotPhase.current === "results" && normalized.phase === "lobby")) setSelectedVote(null);
         if (revealTimer.current !== null) {
           window.clearTimeout(revealTimer.current);
           revealTimer.current = null;
