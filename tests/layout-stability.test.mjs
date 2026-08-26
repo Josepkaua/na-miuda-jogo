@@ -15,5 +15,5 @@ test("detective is ambient background and no longer consumes a discussion column
   assert.match(css, /grid-template-areas:\s*[\s\S]*"chat main"[\s\S]*"chat players"/);
   assert.doesNotMatch(css, /"art chat main"/);
   assert.match(css, /@media \(max-width: 900px\)[\s\S]*linear-gradient\(145deg/);
-  assert.match(layout, /import "\.\/layout-stability\.css"/);
+  assert.match(layout, /import "\.\/game-ui\.css";[\s\S]*import "\.\/layout-stability\.css";/);
 });
