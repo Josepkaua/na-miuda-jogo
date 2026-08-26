@@ -65,6 +65,7 @@ test("clears a previous vote before the next round", async () => {
 
   assert.match(page, /setRoleInfo\(null\); setRoleVisible\(false\); setRevealMotion\("idle"\); setSelectedVote\(null\); await callAction\("start_round"\)/);
   assert.match(page, /if \(snapshot\.phase === "results"\) setSelectedVote\(null\);\s+await callAction\("advance_phase"/);
+  assert.match(page, /if \(normalized\.phase === "reveal" \|\| \(lastSnapshotPhase\.current === "results" && normalized\.phase === "lobby"\)\) setSelectedVote\(null\);/);
 });
 
 test("warns remote players about connection loss and recovery", async () => {
