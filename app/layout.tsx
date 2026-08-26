@@ -4,6 +4,7 @@ import "./connection-status.css";
 import "./automatic-mechanics-ui.css";
 import "./interaction-safety.css";
 import "./game-ui.css";
+import "./layout-stability.css";
 import GamePhaseGuard from "./game-phase-guard";
 import GameMotionController from "./game-motion-controller";
 import GameAutoFlow from "./game-auto-flow";

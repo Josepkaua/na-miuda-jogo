@@ -1,0 +1,84 @@
+/* Targeted layout stabilization after the large UI refactor.
+   Keep the detective as atmosphere instead of consuming a grid column. */
+
+.game-grid.phase-discussion {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 24vw, 390px);
+  grid-template-rows: minmax(380px, 1fr) minmax(300px, auto);
+  grid-template-areas:
+    "chat main"
+    "chat players";
+  gap: 16px;
+  isolation: isolate;
+}
+
+.game-grid.phase-discussion > .discussion-investigator {
+  display: none !important;
+}
+
+.game-grid.phase-discussion > .chat-panel {
+  position: relative;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(7, 11, 29, .58) 0%, rgba(7, 11, 29, .82) 28%, rgba(7, 11, 29, .96) 58%, rgba(7, 11, 29, .99) 100%),
+    url("/investigador-na-miuda.webp") left bottom / clamp(240px, 28vw, 360px) auto no-repeat,
+    linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
+  border-color: rgba(0, 212, 255, .24);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .38), 0 0 32px rgba(0, 212, 255, .06);
+}
+
+.game-grid.phase-discussion > .main-panel,
+.game-grid.phase-discussion > .players-panel {
+  position: relative;
+  z-index: 2;
+}
+
+.game-grid.phase-discussion .chat-heading,
+.game-grid.phase-discussion .chat-phase-note,
+.game-grid.phase-discussion .chat-messages,
+.game-grid.phase-discussion .chat-typing-indicator,
+.game-grid.phase-discussion .new-messages-button,
+.game-grid.phase-discussion .chat-composer,
+.game-grid.phase-discussion .chat-foot,
+.game-grid.phase-discussion .discussion-decision,
+.game-grid.phase-discussion .extra-time-banner {
+  position: relative;
+  z-index: 2;
+}
+
+/* The illustration should read as ambient art, never compete with text. */
+.game-grid.phase-discussion .chat-messages {
+  text-shadow: 0 1px 12px rgba(5, 8, 24, .48);
+}
+
+@media (max-width: 1200px) {
+  .game-grid.phase-discussion {
+    grid-template-columns: minmax(0, 1fr) clamp(310px, 31vw, 380px);
+  }
+
+  .game-grid.phase-discussion > .chat-panel {
+    background:
+      linear-gradient(90deg, rgba(7, 11, 29, .68) 0%, rgba(7, 11, 29, .9) 36%, rgba(7, 11, 29, .99) 72%),
+      url("/investigador-na-miuda.webp") -28px bottom / clamp(210px, 27vw, 300px) auto no-repeat,
+      linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
+  }
+}
+
+@media (max-width: 900px) {
+  .game-grid.phase-discussion {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .game-grid.phase-discussion > .chat-panel {
+    background:
+      linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-grid.phase-discussion > .chat-panel {
+    background-attachment: initial;
+  }
+}
