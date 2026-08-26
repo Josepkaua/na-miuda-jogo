@@ -561,7 +561,7 @@ export default function Home() {
       setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
       return;
     }
-    setRoleInfo(null); setRoleVisible(false); setRevealMotion("idle"); await callAction("start_round");
+    setRoleInfo(null); setRoleVisible(false); setRevealMotion("idle"); setSelectedVote(null); await callAction("start_round");
   }
 
   async function advancePhase() {
@@ -594,6 +594,7 @@ export default function Home() {
         revealTimer.current = null;
       }
     }
+    if (snapshot.phase === "results") setSelectedVote(null);
     await callAction("advance_phase", { p_expected_phase: snapshot.phase, p_expected_round: snapshot.roundNumber });
   }
 
