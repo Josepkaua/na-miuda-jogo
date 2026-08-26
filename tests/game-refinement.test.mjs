@@ -46,6 +46,20 @@ test("keeps motion useful, responsive and accessible", async () => {
   assert.match(polish, /ready-bar i/);
 });
 
+test("stages the private word reveal before showing the secret", async () => {
+  const [page, css] = await Promise.all([
+    read("app/page.tsx"),
+    read("app/game-ui.css"),
+  ]);
+
+  assert.match(page, /type RevealMotion = "idle" \| "scanning" \| "revealed"/);
+  assert.match(page, /reveal-scan-line/);
+  assert.match(page, /Decodificando seu papel/);
+  assert.match(css, /\.role-reveal-stage\.scanning \.reveal-scan-line/);
+  assert.match(css, /@keyframes reveal-card-open/);
+  assert.match(css, /@keyframes cinematic-card-enter/);
+});
+
 test("warns remote players about connection loss and recovery", async () => {
   const [component, css] = await Promise.all([
     read("app/connection-status.tsx"),

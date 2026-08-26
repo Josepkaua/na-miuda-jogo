@@ -10,6 +10,7 @@ type Phase = "lobby" | "reveal" | "discussion" | "voting" | "results";
 type Role = "player" | "impostor";
 type DiscussionStage = "turns" | "decision" | "free_chat" | "resolved";
 type DiscussionChoice = "more_time" | "voting";
+type RevealMotion = "idle" | "scanning" | "revealed";
 
 type Player = {
   id: string;
@@ -200,6 +201,7 @@ export default function Home() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [roleInfo, setRoleInfo] = useState<RoleInfo | null>(null);
   const [roleVisible, setRoleVisible] = useState(false);
+  const [revealMotion, setRevealMotion] = useState<RevealMotion>("idle");
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -222,6 +224,7 @@ export default function Home() {
   const lastChatId = useRef<number | null>(null);
   const chatScroll = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChat = useRef(true);
+  const revealTimer = useRef<number | null>(null);
 
   const remoteEnabled = hasRemoteBackend();
   const me = snapshot?.players.find((player) => player.isMe);
@@ -288,6 +291,10 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => () => {
+    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current);
+  }, []);
+
   const loadSnapshot = useCallback(async (code: string, silent = false) => {
     if (activeRoomCode.current !== code) return;
     const requestNumber = ++latestSnapshotRequest.current;
@@ -321,7 +328,14 @@ export default function Home() {
     }
     if (data) {
       const normalized = normalizeSnapshot(data as Record<string, unknown>);
-      if (lastSnapshotPhase.current && lastSnapshotPhase.current !== normalized.phase) setRoleVisible(false);
+      if (lastSnapshotPhase.current && lastSnapshotPhase.current !== normalized.phase) {
+        setRoleVisible(false);
+        setRevealMotion("idle");
+        if (revealTimer.current !== null) {
+          window.clearTimeout(revealTimer.current);
+          revealTimer.current = null;
+        }
+      }
       lastSnapshotPhase.current = normalized.phase;
       if (normalized.serverNow) setClockOffsetMs(new Date(normalized.serverNow).getTime() - Date.now());
       setSnapshot(normalized);
@@ -543,10 +557,11 @@ export default function Home() {
       const meIsImpostor = impostors.includes(me?.id ?? "");
       setRoleInfo({ role: meIsImpostor ? "impostor" : "player", word: meIsImpostor ? null : "Coxinha", category: "comidas", hint: meIsImpostor ? "É algo associado a lanches, festas e momentos descontraídos." : null, roomId: snapshot.roomId, roundNumber: snapshot.roundNumber + 1 });
       setRoleVisible(false);
+      setRevealMotion("idle");
       setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
       return;
     }
-    setRoleInfo(null); setRoleVisible(false); await callAction("start_round");
+    setRoleInfo(null); setRoleVisible(false); setRevealMotion("idle"); await callAction("start_round");
   }
 
   async function advancePhase() {
@@ -566,12 +581,19 @@ export default function Home() {
         });
         setSnapshot({ ...snapshot, phase: "results", eliminatedPlayerIds: eliminated, revealedWord: "Coxinha", winner: caught ? "group" : "impostor", voteCount: snapshot.players.length, hasVoted: true, players });
       } else {
-        setRoleInfo(null); setRoleVisible(false); setSelectedVote(null);
+        setRoleInfo(null); setRoleVisible(false); setRevealMotion("idle"); setSelectedVote(null);
         setSnapshot({ ...snapshot, phase: "lobby", phaseEndsAt: null, players: snapshot.players.map((player) => ({ ...player, isReady: !player.isMe })) });
       }
       return;
     }
-    if (snapshot.phase === "reveal") setRoleVisible(false);
+    if (snapshot.phase === "reveal") {
+      setRoleVisible(false);
+      setRevealMotion("idle");
+      if (revealTimer.current !== null) {
+        window.clearTimeout(revealTimer.current);
+        revealTimer.current = null;
+      }
+    }
     await callAction("advance_phase", { p_expected_phase: snapshot.phase, p_expected_round: snapshot.roundNumber });
   }
 
@@ -609,12 +631,30 @@ export default function Home() {
     await callAction("open_discussion_decision", { p_expected_round: snapshot.roundNumber });
   }
 
-  async function toggleRoleCard() {
+  function toggleRoleCard() {
     if (!snapshot || !currentRoleInfo) return;
     const revealing = !roleVisible;
-    setRoleVisible(revealing);
-    if (!revealing || snapshot.phase !== "reveal" || demoMode) return;
-    await callAction("acknowledge_role", { p_expected_round: snapshot.roundNumber });
+    if (!revealing) {
+      if (revealTimer.current !== null) {
+        window.clearTimeout(revealTimer.current);
+        revealTimer.current = null;
+      }
+      setRoleVisible(false);
+      setRevealMotion("idle");
+      return;
+    }
+
+    if (revealMotion === "scanning") return;
+    setRoleVisible(false);
+    setRevealMotion("scanning");
+    revealTimer.current = window.setTimeout(() => {
+      revealTimer.current = null;
+      setRoleVisible(true);
+      setRevealMotion("revealed");
+      if (snapshot.phase === "reveal" && !demoMode) {
+        void callAction("acknowledge_role", { p_expected_round: snapshot.roundNumber });
+      }
+    }, 760);
   }
 
   async function copyInvite() {
@@ -786,8 +826,19 @@ export default function Home() {
             <section className="main-panel panel">
               {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
-                <section className="phase-content centered-phase"><div className="phase-icon"><PhaseIcon name={roleVisible ? currentRoleInfo?.role === "impostor" ? "alert" : "lock" : "eye"} size={34} /></div><span className="micro-label">Só você pode ver</span><h3>{roleVisible ? currentRoleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
-                  <button className={`role-card ${roleVisible ? "revealed" : ""}`} disabled={!currentRoleInfo || busy} onClick={toggleRoleCard}>{!roleVisible ? <><strong>{currentRoleInfo ? "Toque para revelar" : "Sorteando seu papel..."}</strong><small>Proteja a tela dos curiosos</small></> : currentRoleInfo?.role === "impostor" ? <><strong>IMPOSTOR</strong><small>Categoria: {roleCategory.label}. Escute as pistas e disfarce.</small>{currentRoleInfo.hint && <span className="role-hint"><b>Dica secreta</b>{currentRoleInfo.hint}</span>}</> : <><strong>{currentRoleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}</button>
+                <section className={`phase-content centered-phase reveal-screen reveal-${revealMotion}`} aria-labelledby="reveal-title">
+                  <div className={`phase-icon reveal-phase-icon ${revealMotion}`}><PhaseIcon name={revealMotion === "scanning" ? "search" : roleVisible ? currentRoleInfo?.role === "impostor" ? "alert" : "lock" : "eye"} size={34} /></div>
+                  <span className="micro-label">{revealMotion === "scanning" ? "Conexão protegida" : roleVisible ? "Segredo confirmado" : "Só você pode ver"}</span>
+                  <h3 id="reveal-title">{revealMotion === "scanning" ? "Decodificando seu papel…" : roleVisible ? currentRoleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
+                  <p className="reveal-subtitle">{revealMotion === "scanning" ? "A sala está conferindo a distribuição. Não feche esta tela." : roleVisible ? currentRoleInfo?.role === "impostor" ? "Agora pareça pertencer à conversa." : "Guarde a resposta. Dê pistas sem entregá-la." : "Toque no cartão quando estiver sozinho para revelar."}</p>
+                  <div className={`role-reveal-stage ${revealMotion} ${currentRoleInfo?.role === "impostor" ? "role-is-impostor" : "role-is-player"}`} aria-live="polite">
+                    <div className="reveal-orbit reveal-orbit-one" aria-hidden="true" />
+                    <div className="reveal-orbit reveal-orbit-two" aria-hidden="true" />
+                    <span className="reveal-scan-line" aria-hidden="true" />
+                    <button className={`role-card ${roleVisible ? "revealed" : ""} ${revealMotion === "scanning" ? "scanning" : ""}`} disabled={!currentRoleInfo || busy || revealMotion === "scanning"} onClick={toggleRoleCard}>
+                      {revealMotion === "scanning" ? <><span className="role-card-mark"><PhaseIcon name="search" size={26} /></span><strong>Decodificando…</strong><small>Conferindo seu papel com a sala</small><span className="role-scan-progress" aria-hidden="true"><i /></span></> : !roleVisible ? <><span className="role-card-mark"><PhaseIcon name="lock" size={26} /></span><strong>{currentRoleInfo ? "Toque para revelar" : "Sorteando seu papel..."}</strong><small>Proteja a tela dos curiosos</small><span className="role-card-hint">A revelação leva menos de um segundo</span></> : currentRoleInfo?.role === "impostor" ? <><span className="role-card-mark danger"><PhaseIcon name="alert" size={26} /></span><strong>IMPOSTOR</strong><small>Categoria: {roleCategory.label}. Escute as pistas e disfarce.</small>{currentRoleInfo.hint && <span className="role-hint"><b>Dica secreta</b>{currentRoleInfo.hint}</span>}</> : <><span className="role-card-mark cyan"><PhaseIcon name="lock" size={26} /></span><strong>{currentRoleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}
+                    </button>
+                  </div>
                   <p className="seen-progress">{snapshot.rolesSeenCount}/{snapshot.roundPlayerCount} viram o papel</p>
                   {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas →</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
                 </section>
@@ -894,10 +945,12 @@ function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLa
   const deciding = snapshot.discussionStage === "decision"
     || (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns") && snapshot.discussionVoteCount === 0 && secondsLeft === 0;
   return <section className="phase-content centered-phase discussion-side">
-    {deciding ? <div className="phase-icon decision-icon"><PhaseIcon name="scale" size={34} /></div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
-    <span className="micro-label">{deciding ? "Decisão da turma" : extraTime ? "Tempo extra" : "Discussão aberta"}</span>
-    <h3>{deciding ? "Votem no chat" : "Conversem livremente"}</h3>
-    <p className="phase-description">{deciding ? "O chat fica pausado por alguns segundos enquanto todos escolhem o próximo passo." : extraTime ? "Usem este minuto para comparar respostas e encontrar contradições." : "Façam perguntas, deem pistas e organizem a conversa do jeito que funcionar melhor para a turma."}</p>
+    <div className="discussion-brief">
+      {deciding ? <div className="phase-icon decision-icon"><PhaseIcon name="scale" size={34} /></div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
+      <span className="micro-label">{deciding ? "Decisão da turma" : extraTime ? "Tempo extra" : "Discussão aberta"}</span>
+      <h3>{deciding ? "Votem no chat" : "Conversem livremente"}</h3>
+      <p className="phase-description">{deciding ? "O chat fica pausado por alguns segundos enquanto todos escolhem o próximo passo." : extraTime ? "Usem este minuto para comparar respostas e encontrar contradições." : "Façam perguntas, deem pistas e organizem a conversa do jeito que funcionar melhor para a turma."}</p>
+    </div>
     <div className={`tip-box ${currentRoleInfo?.role === "impostor" ? "impostor-tip" : ""}`}><span><PhaseIcon name={currentRoleInfo?.role === "impostor" ? "alert" : "lamp"} size={22} /></span><p><strong>{currentRoleInfo?.role === "impostor" ? "Sua dica de blefe" : "Dica rápida"}</strong>{currentRoleInfo?.role === "impostor" ? currentRoleInfo.hint ?? "Escute as palavras que mais se repetem e responda de forma ampla." : "Uma boa pergunta testa quem conhece a palavra sem entregá-la ao impostor."}</p></div>
     <div className="secret-recheck"><button className="ghost-button" disabled={!currentRoleInfo} onClick={onToggleRole}>{roleVisible ? "Ocultar meu segredo" : "Rever meu segredo"}</button>{roleVisible && currentRoleInfo && <div><small>{currentRoleInfo.role === "impostor" ? `Impostor • ${roleCategoryLabel}` : "Sua palavra"}</small><strong>{currentRoleInfo.role === "impostor" ? "IMPOSTOR" : currentRoleInfo.word}</strong>{currentRoleInfo.role === "impostor" && currentRoleInfo.hint && <p>{currentRoleInfo.hint}</p>}</div>}</div>
     {!deciding && (extraTime

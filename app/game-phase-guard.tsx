@@ -255,19 +255,19 @@ export default function GamePhaseGuard() {
           if (revealedRole === "impostor") {
             showCinematic({
               kind: "role-impostor",
-              icon: "🎭",
+              icon: "!",
               eyebrow: "Papel secreto",
               title: "VOCÊ É O IMPOSTOR",
               subtitle: "Observe, improvise e não deixe a equipe perceber.",
-            }, 1450);
+              }, 1850);
           } else {
             showCinematic({
               kind: "role-player",
-              icon: "🔐",
+              icon: "✦",
               eyebrow: "Papel secreto",
               title: "PALAVRA LIBERADA",
               subtitle: "Dê pistas úteis sem entregar a resposta.",
-            }, 1150);
+            }, 1650);
           }
         }
       }
@@ -283,7 +283,7 @@ export default function GamePhaseGuard() {
         if (previous.phase === "lobby" && current.phase === "reveal") {
           showCinematic({
             kind: "neutral",
-            icon: "◉",
+            icon: "◈",
             eyebrow: "Nova rodada",
             title: "PAPÉIS SORTEADOS",
             subtitle: "Proteja sua tela. Seu segredo está chegando.",
@@ -291,7 +291,7 @@ export default function GamePhaseGuard() {
         } else if (previous.phase === "reveal" && current.phase === "discussion") {
           showCinematic({
             kind: "neutral",
-            icon: "?",
+            icon: "⌁",
             eyebrow: "Investigação aberta",
             title: "PISTAS LIBERADAS",
             subtitle: "Converse, observe contradições e encontre quem está improvisando.",
@@ -300,7 +300,7 @@ export default function GamePhaseGuard() {
           setTransitionMessage("");
           showCinematic({
             kind: "vote",
-            icon: "!",
+            icon: "⚑",
             eyebrow: "Sem volta",
             title: "HORA DE ACUSAR",
             subtitle: "Escolha quem você acredita que está blefando.",
@@ -310,7 +310,7 @@ export default function GamePhaseGuard() {
           if (resultOutcome === "group") {
             showCinematic({
               kind: "group",
-              icon: "🔎",
+              icon: "✓",
               eyebrow: "Investigação concluída",
               title: "A EQUIPE VENCEU",
               subtitle: "O disfarce caiu. O impostor foi descoberto.",
@@ -318,7 +318,7 @@ export default function GamePhaseGuard() {
           } else {
             showCinematic({
               kind: "impostor",
-              icon: "🎭",
+              icon: "!",
               eyebrow: "Blefe perfeito",
               title: "O IMPOSTOR VENCEU",
               subtitle: "A suspeita passou longe. O impostor escapou.",
@@ -370,17 +370,20 @@ export default function GamePhaseGuard() {
   return (
     <>
       {cinematic && (
-        <div className={`cinematic-transition cinematic-${cinematic.kind}`} role="status" aria-live="assertive" aria-atomic="true">
+        <div className={`cinematic-transition cinematic-${cinematic.kind}`} role="status" aria-live="assertive" aria-atomic="true" data-cinematic-kind={cinematic.kind}>
           <div className="cinematic-grid" aria-hidden="true" />
           <div className="cinematic-shockwave" aria-hidden="true" />
           <div className="cinematic-particles" aria-hidden="true">
             {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
           </div>
           <div className="cinematic-card">
-            <span className="cinematic-icon" aria-hidden="true">{cinematic.icon}</span>
-            <small>{cinematic.eyebrow}</small>
+            <span className="cinematic-scanline" aria-hidden="true" />
+            <span className="cinematic-icon" aria-hidden="true"><i>{cinematic.icon}</i></span>
+            <small className="cinematic-eyebrow">{cinematic.eyebrow}</small>
             <strong>{cinematic.title}</strong>
+            <span className="cinematic-divider" aria-hidden="true"><i /></span>
             <p>{cinematic.subtitle}</p>
+            <span className="cinematic-progress" aria-hidden="true"><i /></span>
           </div>
         </div>
       )}
