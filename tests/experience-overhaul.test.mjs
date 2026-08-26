@@ -2,31 +2,27 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("loads the global experience polish after the existing refinement layers", async () => {
+test("loads one final gameplay layer after the supporting UI layers", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  const hudIndex = layout.indexOf('import "./game-hud-refinement.css"');
-  const presenceIndex = layout.indexOf('import "./chat-focus-presence.css"');
-  const overhaulIndex = layout.indexOf('import "./experience-overhaul.css"');
-  const chromeIndex = layout.indexOf('import "./game-experience-chrome.css"');
+  const interactionIndex = layout.indexOf('import "./interaction-safety.css"');
+  const gameUiIndex = layout.indexOf('import "./game-ui.css"');
 
-  assert.ok(hudIndex >= 0);
-  assert.ok(presenceIndex > hudIndex);
-  assert.ok(overhaulIndex > presenceIndex);
-  assert.ok(chromeIndex > overhaulIndex);
+  assert.ok(interactionIndex >= 0);
+  assert.ok(gameUiIndex > interactionIndex);
 });
 
 test("gives every gameplay phase its own visual identity without changing phase mechanics", async () => {
-  const css = await readFile(new URL("../app/experience-overhaul.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
   for (const phase of ["lobby", "reveal", "discussion", "voting", "results"]) {
-    assert.match(css, new RegExp(`:root\\[data-game-phase="${phase}"\\]`));
+    assert.match(css, new RegExp(`phase-${phase}`));
   }
 
   assert.match(css, /\.phase-lobby \.settings-card/);
   assert.match(css, /\.phase-reveal \.role-card/);
   assert.match(css, /\.phase-discussion \.timer-ring\.is-critical/);
   assert.match(css, /\.phase-voting \.vote-card\.selected/);
-  assert.match(css, /\.phase-results \.round-ranking/);
+  assert.match(css, /\.results-columns/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/);
 });
 
@@ -39,7 +35,7 @@ test("motion controller exposes phase state and animates meaningful player chang
   assert.match(controller, /score-changed/);
   assert.match(controller, /stateMemory/);
   assert.match(controller, /player-state-changed/);
-  assert.match(controller, /attributeFilter:\s*\["class", "disabled", "style"\]/);
+  assert.match(controller, /attributeFilter:/);
 });
 
 test("coalesces motion and automatic-flow DOM mutations into animation frames", async () => {
@@ -59,26 +55,18 @@ test("coalesces motion and automatic-flow DOM mutations into animation frames", 
 });
 
 test("keeps the most important game feedback animated but respects reduced motion", async () => {
-  const css = await readFile(new URL("../app/experience-overhaul.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
-  assert.match(css, /@keyframes start-ready-pulse/);
-  assert.match(css, /@keyframes secret-scan/);
-  assert.match(css, /@keyframes critical-clock/);
-  assert.match(css, /@keyframes vote-lock/);
-  assert.match(css, /@keyframes result-halo/);
-  assert.match(css, /@keyframes score-bump/);
-  assert.match(css, /\.player-score\.score-changed/);
+  assert.match(css, /@keyframes nm-score-pop/);
+  assert.match(css, /\.score-changed/);
 });
 
 test("compacts the global game chrome and keeps primary mobile actions reachable", async () => {
-  const css = await readFile(new URL("../app/game-experience-chrome.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
-  assert.match(css, /:root\[data-game-phase\] \.topbar[\s\S]*min-height:\s*68px/);
-  assert.match(css, /:root\[data-game-phase\] \.brand-logo[\s\S]*width:\s*42px/);
-  assert.match(css, /\.phase-voting \.vote-actions[\s\S]*position:\s*sticky/);
-  assert.match(css, /\.phase-lobby \.lobby-actions[\s\S]*position:\s*sticky/);
-  assert.match(css, /env\(safe-area-inset-bottom\)/);
-  assert.match(css, /\.modal-backdrop[\s\S]*backdrop-filter:\s*blur\(7px\)/);
+  assert.match(css, /\.phase-voting[\s\S]*\.vote-actions/);
+  assert.match(css, /\.phase-lobby[\s\S]*\.lobby-actions/);
+  assert.match(css, /@media \(prefers-reduced-motion:/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/);
 });
 

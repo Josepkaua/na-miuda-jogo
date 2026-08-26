@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import Image from "next/image";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
 
 type ThemeMode = "system" | "light" | "dark";
@@ -62,6 +63,8 @@ type ChatMessage = {
   isMe: boolean;
 };
 
+type IconName = "home" | "lock" | "search" | "alert" | "eye" | "chat" | "vote" | "users" | "timer" | "copy" | "settings" | "exit" | "trophy" | "check" | "spark" | "send" | "lamp" | "scale";
+
 const categories = [
   { id: "paises", label: "Países", icon: "🌎", hint: "culturas e lugares do mundo" },
   { id: "comidas", label: "Comidas", icon: "🍕", hint: "pratos, bebidas e ingredientes" },
@@ -81,17 +84,17 @@ const demoNames = ["Bia", "Davi", "Luna", "João", "Malu", "Caio", "Nina"];
 const phaseLabels: Record<Phase, string> = {
   lobby: "Sala de espera",
   reveal: "Papel secreto",
-  discussion: "Hora das pistas",
+  discussion: "Discussão aberta",
   voting: "Votação secreta",
   results: "Resultado da rodada",
 };
 
-const phaseSteps: Array<{ id: Phase; short: string; icon: string }> = [
-  { id: "lobby", short: "Reunir", icon: "⌂" },
-  { id: "reveal", short: "Segredo", icon: "◉" },
-  { id: "discussion", short: "Investigar", icon: "?" },
-  { id: "voting", short: "Acusar", icon: "!" },
-  { id: "results", short: "Revelar", icon: "✦" },
+const phaseSteps: Array<{ id: Phase; short: string; icon: IconName }> = [
+  { id: "lobby", short: "Reunir", icon: "home" },
+  { id: "reveal", short: "Segredo", icon: "lock" },
+  { id: "discussion", short: "Investigar", icon: "search" },
+  { id: "voting", short: "Acusar", icon: "alert" },
+  { id: "results", short: "Revelar", icon: "eye" },
 ];
 
 function recommendationFor(players: number) {
@@ -554,10 +557,13 @@ export default function Home() {
       else if (snapshot.phase === "voting") {
         const eliminated = roleInfo?.role === "impostor" ? [me?.id ?? "me"] : [selectedVote ?? snapshot.players[1].id];
         const caught = snapshot.impostorPlayerIds.every((id) => eliminated.includes(id));
-        const players = snapshot.players.map((player) => ({
-          ...player,
-          score: player.score + (caught ? snapshot.impostorPlayerIds.includes(player.id) ? 0 : 1 : snapshot.impostorPlayerIds.includes(player.id) ? 2 : 0),
-        }));
+        const players = snapshot.players.map((player) => {
+          const isImpostor = snapshot.impostorPlayerIds.includes(player.id);
+          const teamPoints = caught && !isImpostor ? 2 : 0;
+          const impostorPoints = !caught && isImpostor ? 3 : 0;
+          const correctVoteBonus = player.isMe && !isImpostor && selectedVote !== null && snapshot.impostorPlayerIds.includes(selectedVote) ? 1 : 0;
+          return { ...player, score: player.score + teamPoints + impostorPoints + correctVoteBonus };
+        });
         setSnapshot({ ...snapshot, phase: "results", eliminatedPlayerIds: eliminated, revealedWord: "Coxinha", winner: caught ? "group" : "impostor", voteCount: snapshot.players.length, hasVoted: true, players });
       } else {
         setRoleInfo(null); setRoleVisible(false); setSelectedVote(null);
@@ -769,23 +775,26 @@ export default function Home() {
         </div>
       ) : (
         <div className={`game-wrap ${snapshot.phase === "discussion" ? "discussion-mode" : ""}`}>
-          <section className="room-header panel"><div className="room-heading"><span className="room-live"><i /> sala aberta</span><div><span className="micro-label">{phaseLabels[snapshot.phase]}</span><h2>{snapshot.phase === "lobby" ? "Junte a turma" : `Rodada ${snapshot.roundNumber}`}</h2></div></div><div className="room-code-block"><span>Código da sala</span><strong>{snapshot.code}</strong><button onClick={copyInvite}>Copiar</button></div></section>
-          <PhaseRail phase={snapshot.phase} />
+          <section className="game-hud panel" aria-label="Status da partida">
+            <div className="hud-room">
+              <section className="room-header panel"><div className="room-heading"><span className="room-live"><i /> sala aberta</span><div><span className="micro-label">{phaseLabels[snapshot.phase]}</span><h2>{snapshot.phase === "lobby" ? "Junte a turma" : `Rodada ${snapshot.roundNumber}`}</h2></div></div><div className="room-code-block"><span>Código da sala</span><strong>{snapshot.code}</strong><button onClick={copyInvite}><PhaseIcon name="copy" size={15} /> <span>Copiar</span></button></div></section>
+              <PhaseRail phase={snapshot.phase} />
+            </div>
+          </section>
           <div className={`game-grid phase-${snapshot.phase} ${snapshot.phase === "discussion" ? "chat-focus" : ""}`}>
+            {snapshot.phase === "discussion" && <Image className="discussion-investigator" src="/investigador-na-miuda.webp" width={360} height={720} sizes="(max-width: 900px) 0px, 24vw" priority alt="" aria-hidden="true" />}
             <section className="main-panel panel">
               {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
-                <section className="phase-content centered-phase"><div className="phase-icon">{roleVisible ? currentRoleInfo?.role === "impostor" ? "🎭" : "🔐" : "👁️"}</div><span className="micro-label">Só você pode ver</span><h3>{roleVisible ? currentRoleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
+                <section className="phase-content centered-phase"><div className="phase-icon"><PhaseIcon name={roleVisible ? currentRoleInfo?.role === "impostor" ? "alert" : "lock" : "eye"} size={34} /></div><span className="micro-label">Só você pode ver</span><h3>{roleVisible ? currentRoleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
                   <button className={`role-card ${roleVisible ? "revealed" : ""}`} disabled={!currentRoleInfo || busy} onClick={toggleRoleCard}>{!roleVisible ? <><strong>{currentRoleInfo ? "Toque para revelar" : "Sorteando seu papel..."}</strong><small>Proteja a tela dos curiosos</small></> : currentRoleInfo?.role === "impostor" ? <><strong>IMPOSTOR</strong><small>Categoria: {roleCategory.label}. Escute as pistas e disfarce.</small>{currentRoleInfo.hint && <span className="role-hint"><b>Dica secreta</b>{currentRoleInfo.hint}</span>}</> : <><strong>{currentRoleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}</button>
                   <p className="seen-progress">{snapshot.rolesSeenCount}/{snapshot.roundPlayerCount} viram o papel</p>
                   {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas →</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
                 </section>
               )}
               {snapshot.phase === "discussion" && <DiscussionSide snapshot={snapshot} secondsLeft={secondsLeft} currentRoleInfo={currentRoleInfo} roleCategoryLabel={roleCategory.label} roleVisible={roleVisible} onToggleRole={() => setRoleVisible((value) => !value)} isHost={isHost} busy={busy} onOpenDecision={openDiscussionDecision} onOpenVoting={advancePhase} />}
-              {snapshot.phase === "voting" && (
-                <section className="phase-content"><span className="micro-label">Escolha sem contar</span><h3>Quem está na miúda?</h3><p className="phase-description vote-copy">Seu voto é secreto e não pode ser trocado depois da confirmação.</p><div className="vote-grid">{snapshot.players.filter((player) => !player.isMe).map((player) => <button key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-pressed={selectedVote === player.id} onClick={() => setSelectedVote(player.id)}><Avatar name={player.nickname} /><span>{player.nickname}</span><i>{selectedVote === player.id ? "✓" : ""}</i></button>)}</div><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy || snapshot.hasVoted} onClick={castVote}>{snapshot.hasVoted ? "Voto confirmado ✓" : "Confirmar meu voto"}</button>{isHost && <button className="ghost-button" disabled={busy || snapshot.voteCount < snapshot.eligibleVoterCount && secondsLeft !== 0 && !demoMode} onClick={advancePhase}>Revelar resultado</button>}</div><div className="vote-progress"><span>{snapshot.voteCount} de {snapshot.eligibleVoterCount} votos confirmados{secondsLeft !== null ? ` • encerra em ${formatTime(secondsLeft)}` : ""}</span><div><i style={{ width: `${snapshot.eligibleVoterCount ? Math.min(100, snapshot.voteCount / snapshot.eligibleVoterCount * 100) : 0}%` }} /></div></div></section>
-              )}
-              {snapshot.phase === "results" && <Results snapshot={snapshot} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
+              {snapshot.phase === "voting" && <VotingScreen snapshot={snapshot} selectedVote={selectedVote} secondsLeft={secondsLeft} busy={busy} isHost={isHost} onSelect={setSelectedVote} onConfirm={castVote} onReveal={advancePhase} />}
+              {snapshot.phase === "results" && <Results snapshot={snapshot} selectedVote={selectedVote} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
             </section>
 
             <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar name={player.nickname} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
@@ -820,9 +829,33 @@ function PhaseRail({ phase }: { phase: Phase }) {
   const activeIndex = phaseSteps.findIndex((step) => step.id === phase);
   return <nav className="phase-rail panel" aria-label="Etapas da rodada">
     {phaseSteps.map((step, index) => <div className={`phase-step ${index < activeIndex ? "complete" : ""} ${index === activeIndex ? "active" : ""}`} aria-current={index === activeIndex ? "step" : undefined} key={step.id}>
-      <span aria-hidden="true">{index < activeIndex ? "✓" : step.icon}</span><div><small>0{index + 1}</small><strong>{step.short}</strong></div>
+      <span aria-hidden="true"><PhaseIcon name={index < activeIndex ? "check" : step.icon} /></span><div><small>0{index + 1}</small><strong>{step.short}</strong></div>
     </div>)}
   </nav>;
+}
+
+function PhaseIcon({ name, size = 20 }: { name: IconName; size?: number }) {
+  const paths: Record<IconName, string> = {
+    home: "M4 10.8 12 4l8 6.8V20a1 1 0 0 1-1 1h-5v-5H10v5H5a1 1 0 0 1-1-1v-9.2Z",
+    lock: "M7 10V7a5 5 0 0 1 10 0v3h1a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2h1Zm2 0h6V7a3 3 0 0 0-6 0v3Zm3 3a1.8 1.8 0 0 0-1 3.3V18h2v-1.7A1.8 1.8 0 0 0 12 13Z",
+    search: "m20 20-4.6-4.6m2.1-5.2a7.3 7.3 0 1 1-14.6 0 7.3 7.3 0 0 1 14.6 0Z",
+    alert: "M12 3 2.8 20h18.4L12 3Zm0 5.4v5.8m0 3.1h.01",
+    eye: "M2.4 12s3.5-6 9.6-6 9.6 6 9.6 6-3.5 6-9.6 6-9.6-6-9.6-6Zm9.6 2.3a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6Z",
+    chat: "M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-5l-3 3-3-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z",
+    vote: "M12 3v18m-4-4 4 4 4-4M5 7h14M5 11h14M5 15h6",
+    users: "M16 20v-1.5a4.5 4.5 0 0 0-9 0V20m4.5-8a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Zm6.5 1.2a2.7 2.7 0 0 1 2.5 2.7V20M17 6.2a2.7 2.7 0 0 1 0 5.1",
+    timer: "M9 2h6m-3 0v3m6.4 1.6 1.8-1.8M20 13a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-4v4l2.5 1.5",
+    copy: "M9 9h10v11H9V9Zm-4 7H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1",
+    settings: "M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Zm8-3.2 1.4 1.1-1.8 3.1-1.7-.7a7.8 7.8 0 0 1-1.9 1.1l-.2 1.8h-3.6l-.2-1.8a7.8 7.8 0 0 1-1.9-1.1l-1.7.7-1.8-3.1L6 12l-1.4-1.1 1.8-3.1 1.7.7A7.8 7.8 0 0 1 10 7.4l.2-1.8h3.6l.2 1.8a7.8 7.8 0 0 1 1.9 1.1l1.7-.7 1.8 3.1L20 12Z",
+    exit: "M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5m5-4 4-4-4-4m4 4H9",
+    trophy: "M7 4h10v5a5 5 0 0 1-10 0V4Zm5 10v6m-4 0h8M4 5H2v2a4 4 0 0 0 4 4m14-6h2v2a4 4 0 0 1-4 4",
+    check: "m5 12 4 4L19 6",
+    spark: "m12 2 1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Zm6 14 .7 2.3L21 19l-2.3.7L18 22l-.7-2.3L15 19l2.3-.7L18 16Z",
+    send: "m21 3-7.2 18-3.1-7.7L3 10.2 21 3Zm0 0L10.7 13.3",
+    lamp: "M9 19h6m-5 3h4M8 15.5a7 7 0 1 1 8 0c-.7.5-1 1.1-1 2.5H9c0-1.4-.3-2-1-2.5Z",
+    scale: "M12 4v16m-7 0h14M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6Z",
+  };
+  return <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }
 
 function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: ThemeMode) => void }) {
@@ -861,11 +894,11 @@ function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLa
   const deciding = snapshot.discussionStage === "decision"
     || (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns") && snapshot.discussionVoteCount === 0 && secondsLeft === 0;
   return <section className="phase-content centered-phase discussion-side">
-    {deciding ? <div className="phase-icon decision-icon">⚖️</div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
+    {deciding ? <div className="phase-icon decision-icon"><PhaseIcon name="scale" size={34} /></div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
     <span className="micro-label">{deciding ? "Decisão da turma" : extraTime ? "Tempo extra" : "Discussão aberta"}</span>
     <h3>{deciding ? "Votem no chat" : "Conversem livremente"}</h3>
     <p className="phase-description">{deciding ? "O chat fica pausado por alguns segundos enquanto todos escolhem o próximo passo." : extraTime ? "Usem este minuto para comparar respostas e encontrar contradições." : "Façam perguntas, deem pistas e organizem a conversa do jeito que funcionar melhor para a turma."}</p>
-    <div className={`tip-box ${currentRoleInfo?.role === "impostor" ? "impostor-tip" : ""}`}><span>{currentRoleInfo?.role === "impostor" ? "🎭" : "💡"}</span><p><strong>{currentRoleInfo?.role === "impostor" ? "Sua dica de blefe" : "Dica rápida"}</strong>{currentRoleInfo?.role === "impostor" ? currentRoleInfo.hint ?? "Escute as palavras que mais se repetem e responda de forma ampla." : "Uma boa pergunta testa quem conhece a palavra sem entregá-la ao impostor."}</p></div>
+    <div className={`tip-box ${currentRoleInfo?.role === "impostor" ? "impostor-tip" : ""}`}><span><PhaseIcon name={currentRoleInfo?.role === "impostor" ? "alert" : "lamp"} size={22} /></span><p><strong>{currentRoleInfo?.role === "impostor" ? "Sua dica de blefe" : "Dica rápida"}</strong>{currentRoleInfo?.role === "impostor" ? currentRoleInfo.hint ?? "Escute as palavras que mais se repetem e responda de forma ampla." : "Uma boa pergunta testa quem conhece a palavra sem entregá-la ao impostor."}</p></div>
     <div className="secret-recheck"><button className="ghost-button" disabled={!currentRoleInfo} onClick={onToggleRole}>{roleVisible ? "Ocultar meu segredo" : "Rever meu segredo"}</button>{roleVisible && currentRoleInfo && <div><small>{currentRoleInfo.role === "impostor" ? `Impostor • ${roleCategoryLabel}` : "Sua palavra"}</small><strong>{currentRoleInfo.role === "impostor" ? "IMPOSTOR" : currentRoleInfo.word}</strong>{currentRoleInfo.role === "impostor" && currentRoleInfo.hint && <p>{currentRoleInfo.hint}</p>}</div>}</div>
     {!deciding && (extraTime
       ? isHost ? <button className="primary-button phase-action" disabled={busy} onClick={onOpenVoting}>Encerrar conversa e votar →</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>
@@ -927,16 +960,16 @@ function ChatPanel({
       <div><span className="micro-label">{phase === "discussion" ? "Conversem e descubram" : "Conversa da sala"}</span><h3>{phase === "discussion" ? "Discussão ao vivo" : "Chat da turma"}</h3></div>
       <div className="chat-heading-status">{phase === "discussion" && !deciding && secondsLeft !== null && <span className="chat-timer-pill">{formatTime(secondsLeft)}</span>}<span className="chat-live"><i /> ao vivo</span></div>
     </div>
-    <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span>{paused ? "🔒" : "💬"}</span>{phaseHint}</div>
+    <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span><PhaseIcon name={paused ? "lock" : "chat"} size={15} /></span>{phaseHint}</div>
     {phase === "discussion" && snapshot.discussionMoreTimeCount > 0 && !deciding && <div className="extra-time-banner"><span>＋1:00</span><div><strong>Tempo extra liberado</strong><small>O chat voltou — comparem as respostas.</small></div></div>}
     {deciding ? <div className="discussion-decision" role="group" aria-labelledby="discussion-question">
-      <div className="decision-symbol" aria-hidden="true">?</div>
+      <div className="decision-symbol" aria-hidden="true"><PhaseIcon name="scale" size={24} /></div>
       <span className="micro-label">Todo mundo escolhe</span>
       <h4 id="discussion-question">Mais tempo ou votação?</h4>
       <p>Assim que uma opção tiver maioria, o jogo continua automaticamente.</p>
       <div className="decision-options">
-        <button type="button" className={snapshot.discussionVoteChoice === "more_time" ? "selected" : ""} disabled={snapshot.hasDiscussionVoted || actionBusy} onClick={() => onDiscussionChoice("more_time")}><span>⏱️</span><div><strong>Mais tempo</strong><small>+1 minuto de chat</small></div><b>{snapshot.discussionMoreTimeCount}</b></button>
-        <button type="button" className={snapshot.discussionVoteChoice === "voting" ? "selected" : ""} disabled={snapshot.hasDiscussionVoted || actionBusy} onClick={() => onDiscussionChoice("voting")}><span>🗳️</span><div><strong>Ir para votação</strong><small>Escolher o impostor</small></div><b>{snapshot.discussionGoVotingCount}</b></button>
+        <button type="button" className={snapshot.discussionVoteChoice === "more_time" ? "selected" : ""} disabled={snapshot.hasDiscussionVoted || actionBusy} onClick={() => onDiscussionChoice("more_time")}><span><PhaseIcon name="timer" size={22} /></span><div><strong>Mais tempo</strong><small>+1 minuto de chat</small></div><b>{snapshot.discussionMoreTimeCount}</b></button>
+        <button type="button" className={snapshot.discussionVoteChoice === "voting" ? "selected" : ""} disabled={snapshot.hasDiscussionVoted || actionBusy} onClick={() => onDiscussionChoice("voting")}><span><PhaseIcon name="vote" size={22} /></span><div><strong>Ir para votação</strong><small>Escolher o impostor</small></div><b>{snapshot.discussionGoVotingCount}</b></button>
       </div>
       <div className="decision-progress"><span><b>{snapshot.discussionVoteCount}</b> de {snapshot.eligibleVoterCount} votaram</span><div><i style={{ width: `${voteProgress}%` }} /></div></div>
       {snapshot.hasDiscussionVoted && <small className="decision-waiting">Seu voto foi contado. Aguardando a turma…</small>}
@@ -957,9 +990,31 @@ function ChatPanel({
         aria-label="Mensagem para o chat da sala"
         autoComplete="off"
       />
-      <button type="submit" disabled={paused || busy || !draft.trim()} aria-label="Enviar mensagem">{busy ? "…" : "➤"}</button>
+      <button type="submit" disabled={paused || busy || !draft.trim()} aria-label="Enviar mensagem">{busy ? "…" : <PhaseIcon name="send" size={19} />}</button>
     </form>
     <div className="chat-foot"><span>Enter para enviar</span>{draft.length >= 220 && <span>{draft.length}/280</span>}</div>
+  </section>;
+}
+
+function VotingScreen({ snapshot, selectedVote, secondsLeft, busy, isHost, onSelect, onConfirm, onReveal }: {
+  snapshot: Snapshot;
+  selectedVote: string | null;
+  secondsLeft: number | null;
+  busy: boolean;
+  isHost: boolean;
+  onSelect: (id: string) => void;
+  onConfirm: () => void;
+  onReveal: () => void;
+}) {
+  const candidates = snapshot.players.filter((player) => !player.isMe);
+  const progress = snapshot.eligibleVoterCount ? Math.min(100, snapshot.voteCount / snapshot.eligibleVoterCount * 100) : 0;
+  return <section className="phase-content voting-screen" aria-labelledby="voting-title">
+    <div className="phase-title-row"><div><span className="micro-label">Rodada {snapshot.roundNumber} • Votação</span><h3 id="voting-title">Quem é o impostor?</h3><p className="phase-description vote-copy">Escolha em segredo. Depois de confirmar, seu voto fica travado.</p></div><div className="phase-timer-chip"><PhaseIcon name="timer" size={17} /><strong>{secondsLeft === null ? "--:--" : formatTime(secondsLeft)}</strong><small>para votar</small></div></div>
+    <div className="vote-grid" role="listbox" aria-label="Escolha um jogador para acusar" aria-activedescendant={selectedVote ? `candidate-${selectedVote}` : undefined}>
+      {candidates.map((player) => <button id={`candidate-${player.id}`} role="option" key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-selected={selectedVote === player.id} onClick={() => onSelect(player.id)}><Avatar name={player.nickname} /><span>{player.nickname}</span><i aria-hidden="true">{selectedVote === player.id ? <PhaseIcon name="check" size={16} /> : null}</i></button>)}
+    </div>
+    <div className="vote-confirmation"><span>Seu voto: <strong>{selectedVote ? candidates.find((player) => player.id === selectedVote)?.nickname : "—"}</strong></span><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy || snapshot.hasVoted} onClick={onConfirm}>{snapshot.hasVoted ? <><PhaseIcon name="check" size={16} /> Voto confirmado</> : "Confirmar voto"}</button>{isHost && <button className="ghost-button" aria-hidden="true" tabIndex={-1} disabled={busy || snapshot.voteCount < snapshot.eligibleVoterCount && secondsLeft !== 0 && !snapshot.hasVoted} onClick={onReveal}>Revelar resultado</button>}</div></div>
+    <div className="vote-progress"><span>{snapshot.voteCount} de {snapshot.eligibleVoterCount} votos confirmados{secondsLeft !== null ? ` • encerra em ${formatTime(secondsLeft)}` : ""}</span><div><i style={{ width: `${progress}%` }} /></div></div>
   </section>;
 }
 
@@ -969,13 +1024,31 @@ function Lobby({ snapshot, me, readyCount, selectedCategory, toggleReady, startR
   return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>A turma está chegando</h3><p>Compartilhe o código, combine a partida no chat e marque “Estou pronto”. Os papéis e a palavra serão sorteados com segurança no servidor.</p></div><div className="settings-card"><div className="settings-title"><strong>Ficha desta partida</strong><span>Escolhida pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">{selectedCategory.icon}</span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">👥</span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">⏱️</span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para conversa e suspeitas</small></div></div><span className="setting-value">Por rodada</span></div></div><div className="ready-box"><div><strong>{readyCount}/{onlinePlayers.length} online prontos</strong><span>{onlinePlayers.length < 3 ? `Faltam ${3 - onlinePlayers.length} jogadores` : canStart ? "Todo mundo pronto — podem começar!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, onlinePlayers.length ? readyCount / onlinePlayers.length * 100 : 8)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? "✓ Estou pronto" : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar →"}</button>}</div></section>;
 }
 
-function Results({ snapshot, isHost, advancePhase, busy }: { snapshot: Snapshot; isHost: boolean; advancePhase: () => void; busy: boolean }) {
+function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snapshot: Snapshot; selectedVote: string | null; isHost: boolean; advancePhase: () => void; busy: boolean }) {
   const eliminated = snapshot.players.filter((player) => snapshot.eliminatedPlayerIds.includes(player.id));
   const impostors = snapshot.players.filter((player) => snapshot.impostorPlayerIds.includes(player.id));
-  const ranking = [...snapshot.players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname)).slice(0, 3);
+  const ranking = [...snapshot.players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
   const groupWon = snapshot.winner === "group";
   const plural = impostors.length > 1;
-  return <section className="phase-content centered-phase results-content"><div className="result-confetti" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div><div className={`result-burst ${groupWon ? "caught" : "escaped"}`}>{groupWon ? "🔎" : "🎭"}</div><span className="micro-label">A verdade apareceu</span><h3>{groupWon ? plural ? "Impostores descobertos!" : "Impostor descoberto!" : plural ? "Os impostores escaparam!" : "O impostor escapou!"}</h3><p className="phase-description">{eliminated.length ? eliminated.map((player) => player.nickname).join(" e ") : "O mais votado"} {eliminated.length > 1 ? "ficaram" : "ficou"} entre os mais votados.</p><div className="result-evidence"><div className="impostor-reveal-card"><small>{plural ? "Os impostores eram" : "O impostor era"}</small><div>{impostors.length ? impostors.map((player) => <span key={player.id}><Avatar name={player.nickname} /><strong>{player.nickname}</strong></span>) : <strong>Revelando…</strong>}</div></div><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div></div><div className="round-ranking"><small>Placar da turma</small><div>{ranking.map((player, index) => <span key={player.id}><b>{index === 0 ? "♛" : index + 1}</b><strong>{player.nickname}</strong><em>{player.score} pt</em></span>)}</div></div><div className="points-note">{groupWon ? "Cada inocente marca 1 ponto." : "Cada impostor marca 2 pontos."}</div>{isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Preparar próxima rodada →</button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}</section>;
+  const roundPoints = (player: Player) => {
+    const isImpostor = impostors.some((impostor) => impostor.id === player.id);
+    const teamPoints = groupWon && !isImpostor ? 2 : 0;
+    const impostorPoints = !groupWon && isImpostor ? 3 : 0;
+    const correctVoteBonus = player.isMe && !isImpostor && selectedVote !== null && snapshot.impostorPlayerIds.includes(selectedVote) ? 1 : 0;
+    return teamPoints + impostorPoints + correctVoteBonus;
+  };
+  return <section className={`phase-content results-content ${groupWon ? "result-group-win" : "result-impostor-win"}`} aria-labelledby="results-title">
+    <div className="result-confetti" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div>
+    <div className={`result-burst ${groupWon ? "caught" : "escaped"}`} aria-hidden="true"><PhaseIcon name={groupWon ? "trophy" : "alert"} size={42} /></div>
+    <div className="results-heading"><span className="micro-label">Resultado da Rodada {snapshot.roundNumber}</span><h3 id="results-title">{groupWon ? "A turma venceu!" : "O impostor escapou!"}</h3><p>Os votos decidiram — a verdade veio à tona.</p></div>
+    <div className="results-columns">
+      <section className="results-panel impostor-panel"><span className="panel-kicker"><PhaseIcon name="alert" size={14} /> {plural ? "Impostores" : "Impostor"}</span><div className="impostor-list">{impostors.length ? impostors.map((player) => <div className="impostor-person" key={player.id}><Avatar name={player.nickname} /><div><strong>{player.nickname}</strong><small>identidade revelada</small></div></div>) : <strong>Identidade indisponível</strong>}</div><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div></section>
+      <section className="results-panel votes-panel"><span className="panel-kicker"><PhaseIcon name="vote" size={14} /> Votação</span><div className="vote-totals">{ranking.map((player, index) => <div className="vote-total-row" key={player.id}><span className="vote-rank">{index + 1}</span><Avatar name={player.nickname} /><strong>{player.nickname}</strong><b>{snapshot.eliminatedPlayerIds.includes(player.id) ? "faixa vencedora" : "voto registrado"}</b></div>)}</div><small className="results-note">{eliminated.length ? `${eliminated.map((player) => player.nickname).join(" e ")} ficou${eliminated.length > 1 ? "ram" : ""} na faixa mais votada. A contagem individual permanece privada.` : "Sem eliminação nesta votação. A contagem individual permanece privada."}</small></section>
+      <section className="results-panel score-panel"><span className="panel-kicker"><PhaseIcon name="trophy" size={14} /> Pontuação</span><div className="score-list">{ranking.map((player) => <div className="score-row" key={player.id}><Avatar name={player.nickname} /><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><span><b>+{roundPoints(player)}</b><small>{player.score} total</small></span></div>)}</div><small className="results-note">Impostor vencedor +3 • equipe vencedora +2 • voto correto em impostor +1</small></section>
+    </div>
+    <div className="points-note">{groupWon ? "A turma encontrou todos os impostores." : "O impostor ainda está entre vocês — ninguém está seguro."}</div>
+    {isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Próxima rodada <span aria-hidden="true">→</span></button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}
+  </section>;
 }
 
 function RulesModal({ onClose }: { onClose: () => void }) {

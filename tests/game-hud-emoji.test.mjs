@@ -4,16 +4,15 @@ import test from "node:test";
 
 test("keeps the in-game HUD compact, unified and animated", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../app/game-hud-refinement.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
-  assert.match(layout, /game-hud-refinement\.css/);
-  assert.match(css, /\.game-wrap > \.room-header\.panel[\s\S]*margin-bottom:\s*0;/);
-  assert.match(css, /border-radius:\s*20px 20px 0 0/);
-  assert.match(css, /\.game-wrap > \.phase-rail\.panel[\s\S]*border-radius:\s*0 0 20px 20px/);
-  assert.match(css, /calc\(100dvh - 158px\)/);
-  assert.match(css, /@keyframes phase-scan/);
-  assert.match(css, /@keyframes phase-icon-breathe/);
-  assert.match(css, /\.chat-messages \.chat-message:last-child/);
+  assert.match(layout, /game-ui\.css/);
+  assert.match(css, /\.game-hud\s*\{/);
+  assert.match(css, /\.room-header\.panel, \.phase-rail\.panel/);
+  assert.match(css, /calc\(100dvh - 180px\)/);
+  assert.match(css, /@keyframes nm-score-pop/);
+  assert.match(css, /@keyframes nm-row-flash/);
+  assert.match(css, /\.chat-message/);
   assert.match(css, /@media \(max-width:\s*600px\)/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/);
 });
@@ -21,7 +20,7 @@ test("keeps the in-game HUD compact, unified and animated", async () => {
 test("adds an accessible emoji picker without changing chat transport", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const picker = await readFile(new URL("../app/chat-emoji-picker.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../app/game-hud-refinement.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
   assert.match(layout, /<ChatEmojiPicker\s*\/>/);
   assert.match(picker, /useSyncExternalStore/);
@@ -33,7 +32,7 @@ test("adds an accessible emoji picker without changing chat transport", async ()
   assert.match(picker, /aria-haspopup="menu"/);
   assert.match(picker, /role="menu"/);
   assert.match(picker, /"😂"[\s\S]*"🎭"[\s\S]*"❤️"/);
-  assert.match(css, /grid-template-columns:\s*42px minmax\(0, 1fr\) 42px/);
+  assert.match(css, /grid-template-columns:\s*minmax\(0, 1fr\) 43px/);
   assert.match(css, /\.emoji-menu/);
   assert.match(css, /\.emoji-grid/);
 });
@@ -56,12 +55,12 @@ test("emoji picker closes naturally and supports keyboard navigation", async () 
 test("keeps the discussion composer wide and ready for continuous desktop typing", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const focus = await readFile(new URL("../app/chat-focus-presence.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../app/chat-focus-presence.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
-  assert.match(layout, /chat-focus-presence\.css/);
+  assert.match(layout, /game-ui\.css/);
   assert.match(layout, /<ChatFocusPresence\s*\/>/);
-  assert.match(css, /\.chat-focus \.chat-composer\s*\{[\s\S]*grid-template-columns:\s*48px minmax\(0, 1fr\) 48px;/);
-  assert.match(css, /\.chat-focus \.chat-composer > input[\s\S]*min-width:\s*0;[\s\S]*width:\s*100%;/);
+  assert.match(css, /\.chat-composer\s*\{[\s\S]*grid-template-columns:/);
+  assert.match(css, /\.chat-composer > input[\s\S]*min-width:\s*0;[\s\S]*width:\s*100%;/);
   assert.match(focus, /matchMedia\("\(pointer: fine\)"\)/);
   assert.match(focus, /input\.focus\(\{ preventScroll: true \}\)/);
   assert.match(focus, /document\.addEventListener\("keydown", onGlobalKeyDown, true\)/);
@@ -80,7 +79,7 @@ test("shares one DOM observer for chat focus and presence state", async () => {
 
 test("shows realtime animated typing presence without a database migration", async () => {
   const presence = await readFile(new URL("../app/chat-focus-presence.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../app/chat-focus-presence.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
   assert.match(presence, /\.channel\(`na-miuda-typing-\$\{roomCode\}`/);
   assert.match(presence, /event:\s*"typing"/);

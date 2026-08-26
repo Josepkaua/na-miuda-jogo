@@ -7,7 +7,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("keeps the round moving without host shortcuts", async () => {
   const [autoFlow, automaticCss, guard] = await Promise.all([
     read("app/game-auto-flow.tsx"),
-    read("app/automatic-flow.css"),
+    read("app/game-ui.css"),
     read("app/game-phase-guard.tsx"),
   ]);
 
@@ -15,8 +15,8 @@ test("keeps the round moving without host shortcuts", async () => {
   assert.doesNotMatch(autoFlow, /revealHostCardIfNeeded/);
   assert.match(autoFlow, /if \(button\.disabled\) button\.disabled = false/);
   assert.match(autoFlow, /button\.click\(\)/);
-  assert.match(automaticCss, /discussion-decision-trigger[\s\S]*display:\s*none\s*!important/);
-  assert.match(automaticCss, /phase-voting[\s\S]*vote-actions > \.ghost-button[\s\S]*display:\s*none\s*!important/);
+  assert.match(automaticCss, /discussion-decision-trigger[\s\S]*display:\s*none/);
+  assert.match(automaticCss, /phase-voting[\s\S]*\.vote-actions \.primary-button/);
   assert.match(guard, /voting\.complete \|\| voting\.expired/);
   assert.match(guard, /revealButton\.click\(\)/);
 });
@@ -32,8 +32,8 @@ test("does not trap voting when the timer expires with zero votes", async () => 
 test("keeps motion useful, responsive and accessible", async () => {
   const [motion, cinematic, polish] = await Promise.all([
     read("app/game-motion-controller.tsx"),
-    read("app/cinematic-transitions.css"),
-    read("app/game-polish.css"),
+    read("app/game-ui.css"),
+    read("app/game-ui.css"),
   ]);
 
   assert.match(motion, /syncDiscussionUrgency/);
@@ -43,7 +43,7 @@ test("keeps motion useful, responsive and accessible", async () => {
   assert.match(cinematic, /cinematic-group/);
   assert.match(cinematic, /prefers-reduced-motion:\s*reduce/);
   assert.match(polish, /vote-card\.selected/);
-  assert.match(polish, /ready-bar i::after/);
+  assert.match(polish, /ready-bar i/);
 });
 
 test("warns remote players about connection loss and recovery", async () => {

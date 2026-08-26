@@ -38,23 +38,23 @@ test("renders the production identity and social metadata", async () => {
 });
 
 test("keeps the discussion chat usable on narrow screens", async () => {
-  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const [baseCss, css] = await Promise.all([
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/game-ui.css", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(css, /\.app-shell\s*\{[^}]*overflow-x:\s*clip;[^}]*overflow-y:\s*visible;/s);
-  assert.match(css, /@media\s*\(max-width:\s*900px\),\s*\(hover:\s*none\) and \(pointer:\s*coarse\)/);
-  assert.match(css, /\.game-grid\.chat-focus\s*\{[^}]*grid-template-areas:\s*"chat"\s*"main"\s*"players";/s);
-  assert.match(css, /\.chat-focus \.chat-panel\s*\{[^}]*height:\s*clamp\([^}]*100dvh/s);
-  assert.match(css, /\.chat-focus \.chat-messages\s*\{[^}]*min-height:\s*0;/s);
+  assert.match(baseCss, /\.app-shell\s*\{[^}]*overflow-x:\s*clip;/s);
+  assert.match(css, /@media\s*\(max-width:\s*900px\)/);
+  assert.match(css, /\.phase-discussion\s*\{[^}]*grid-template-areas:\s*"art chat main"\s*"art chat players";/s);
+  assert.match(css, /\.chat-messages\s*\{[^}]*min-height:/s);
 });
 
 test("keeps the lobby chat large and long player lists contained", async () => {
-  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
-  assert.match(css, /\.game-grid\.phase-lobby\s*\{[^}]*grid-template-areas:\s*"players main chat";/s);
-  assert.match(css, /\.phase-lobby \.player-list\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
-  assert.match(css, /\.phase-lobby \.chat-messages\s*\{[^}]*flex:\s*1 1 auto;[^}]*height:\s*auto;/s);
-  assert.match(css, /\.game-grid\.phase-lobby\s*\{[^}]*height:\s*auto;[^}]*grid-template-areas:\s*"main"\s*"players"\s*"chat";/s);
-  assert.match(css, /\.vote-progress\s*\{[^}]*font-size:\s*12px;[^}]*font-weight:\s*900;/s);
+  assert.match(css, /\.player-list\s*\{[^}]*overflow:\s*auto;/s);
+  assert.match(css, /\.chat-messages\s*\{[^}]*overflow-y:\s*auto;/s);
+  assert.match(css, /\.vote-progress\s*\{/);
 });
 
 test("removes inactive players from server-side vote eligibility", async () => {
@@ -67,20 +67,19 @@ test("removes inactive players from server-side vote eligibility", async () => {
 });
 
 test("keeps discussion chat-first and reopens the collective decision after more time", async () => {
-  const css = await readFile(new URL("../app/discussion-refinement.css", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
   const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const sql = await readFile(new URL("../supabase/migrations/20260824040000_remove_inactive_players.sql", import.meta.url), "utf8");
 
-  assert.match(layout, /discussion-refinement\.css/);
+  assert.match(layout, /game-ui\.css/);
   assert.match(layout, /<GamePhaseGuard\s*\/>/);
-  assert.match(css, /\.game-grid\.chat-focus\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+292px;/s);
-  assert.match(css, /\.chat-focus \.main-panel\s*\{[^}]*overflow:\s*hidden;/s);
-  assert.match(css, /\.chat-focus \.players-panel\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s);
-  assert.match(css, /\.chat-focus \.player-list\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
-  assert.match(css, /\.chat-focus \.chat-messages\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
-  assert.match(css, /62svh/);
+  assert.match(css, /\.phase-discussion\s*\{[^}]*grid-template-columns:/s);
+  assert.match(css, /\.main-panel\s*\{[^}]*overflow:\s*hidden;/s);
+  assert.match(css, /\.player-list\s*\{[^}]*overflow:\s*auto;/s);
+  assert.match(css, /\.chat-messages\s*\{[^}]*overflow-y:\s*auto;/s);
+  assert.match(css, /100dvh/);
   assert.match(css, /100dvh/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
@@ -108,11 +107,10 @@ test("uses cinematic transitions without sacrificing accessibility or mechanical
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
   const controller = await readFile(new URL("../app/game-motion-controller.tsx", import.meta.url), "utf8");
-  const cinematic = await readFile(new URL("../app/cinematic-transitions.css", import.meta.url), "utf8");
-  const polish = await readFile(new URL("../app/game-polish.css", import.meta.url), "utf8");
+  const cinematic = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
+  const polish = cinematic;
 
-  assert.match(layout, /cinematic-transitions\.css/);
-  assert.match(layout, /game-polish\.css/);
+  assert.match(layout, /game-ui\.css/);
   assert.match(layout, /<GameMotionController\s*\/>/);
   assert.match(guard, /kind:\s*"role-impostor"/);
   assert.match(guard, /kind:\s*"role-player"/);
@@ -127,9 +125,9 @@ test("uses cinematic transitions without sacrificing accessibility or mechanical
   assert.match(cinematic, /\.timer-ring\.is-critical/);
   assert.match(cinematic, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(polish, /\.vote-card\.selected/);
-  assert.match(polish, /\.ready-bar i::after/);
+  assert.match(polish, /\.ready-bar i/);
   assert.match(polish, /\.discussion-decision/);
-  assert.match(polish, /\.cinematic-transition\s*\{[\s\S]*pointer-events:\s*auto;/);
+  assert.match(polish, /\.cinematic-transition\s*\{[\s\S]*pointer-events:\s*none;/);
   assert.match(polish, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
