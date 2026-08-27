@@ -1,14 +1,20 @@
 /* Targeted layout stabilization after the large UI refactor.
-   Keep the detective as atmosphere instead of consuming a grid column. */
+   Keep the detective as atmosphere, prevent side-card overflow and make
+   discussion/reveal fit real notebook viewports instead of a fixed 700px floor. */
 
+/* --------------------------------------------------------------------------
+   DISCUSSION
+   -------------------------------------------------------------------------- */
 .game-grid.phase-discussion {
   position: relative;
-  grid-template-columns: minmax(0, 1fr) clamp(340px, 24vw, 390px);
-  grid-template-rows: minmax(380px, 1fr) minmax(300px, auto);
+  height: clamp(560px, calc(100dvh - 210px), 760px);
+  min-height: 560px;
+  grid-template-columns: minmax(0, 1fr) clamp(330px, 24vw, 385px);
+  grid-template-rows: minmax(300px, .95fr) minmax(230px, 1.05fr);
   grid-template-areas:
     "chat main"
     "chat players";
-  gap: 16px;
+  gap: 14px;
   isolation: isolate;
 }
 
@@ -19,18 +25,32 @@
 .game-grid.phase-discussion > .chat-panel {
   position: relative;
   z-index: 1;
-  background:
-    linear-gradient(90deg, rgba(7, 11, 29, .58) 0%, rgba(7, 11, 29, .82) 28%, rgba(7, 11, 29, .96) 58%, rgba(7, 11, 29, .99) 100%),
-    url("/investigador-na-miuda.webp") left bottom / clamp(240px, 28vw, 360px) auto no-repeat,
-    linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
+  overflow: hidden;
   border-color: rgba(0, 212, 255, .24);
+  background: linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
   box-shadow: 0 24px 80px rgba(0, 0, 0, .38), 0 0 32px rgba(0, 212, 255, .06);
+}
+
+/* Detective is ambient art now: no grid column, no layout cost. */
+.game-grid.phase-discussion > .chat-panel::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background: url("/investigador-na-miuda.webp") -18px bottom / clamp(245px, 25vw, 330px) auto no-repeat;
+  opacity: .24;
+  filter: saturate(.9) contrast(.92);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0,0,0,.92) 44%, rgba(0,0,0,.28) 72%, transparent 92%);
+  mask-image: linear-gradient(90deg, #000 0%, rgba(0,0,0,.92) 44%, rgba(0,0,0,.28) 72%, transparent 92%);
 }
 
 .game-grid.phase-discussion > .main-panel,
 .game-grid.phase-discussion > .players-panel {
   position: relative;
   z-index: 2;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .game-grid.phase-discussion .chat-heading,
@@ -46,39 +66,437 @@
   z-index: 2;
 }
 
-/* The illustration should read as ambient art, never compete with text. */
 .game-grid.phase-discussion .chat-messages {
   text-shadow: 0 1px 12px rgba(5, 8, 24, .48);
 }
 
-@media (max-width: 1200px) {
-  .game-grid.phase-discussion {
-    grid-template-columns: minmax(0, 1fr) clamp(310px, 31vw, 380px);
+/* The empty-state copy sits away from the detective instead of over his face. */
+.game-grid.phase-discussion .chat-empty {
+  padding-left: clamp(110px, 18vw, 250px);
+}
+
+.game-grid.phase-discussion .chat-empty > span {
+  display: none;
+}
+
+/* The right column must fit inside its row; never bleed into the hint/score card. */
+.game-grid.phase-discussion .discussion-side {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  align-content: start;
+  gap: 8px;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.game-grid.phase-discussion .discussion-brief {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: 13px;
+  row-gap: 3px;
+  align-items: center;
+  justify-items: stretch;
+  padding: 13px 15px;
+  text-align: left;
+}
+
+.game-grid.phase-discussion .discussion-brief > .timer-ring,
+.game-grid.phase-discussion .discussion-brief > .decision-icon {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  align-self: center;
+  justify-self: center;
+}
+
+.game-grid.phase-discussion .discussion-brief > .micro-label {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+}
+
+.game-grid.phase-discussion .discussion-brief > h3 {
+  grid-column: 2;
+  grid-row: 2;
+  margin: 0;
+  font-size: clamp(19px, 1.55vw, 23px);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.game-grid.phase-discussion .discussion-brief > .phase-description {
+  grid-column: 2;
+  grid-row: 3;
+  max-width: none;
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.38;
+}
+
+.game-grid.phase-discussion .timer-ring {
+  width: 80px;
+  height: 80px;
+  margin: 0;
+  border-width: 5px;
+  box-shadow: 0 0 18px rgba(0, 212, 255, .14);
+}
+
+.game-grid.phase-discussion .timer-ring strong {
+  font-size: 19px;
+}
+
+.game-grid.phase-discussion .timer-ring span {
+  font-size: 7px;
+}
+
+.game-grid.phase-discussion .discussion-brief .decision-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0;
+}
+
+.game-grid.phase-discussion .discussion-side .tip-box {
+  min-height: 68px;
+  padding: 10px 12px;
+  border-radius: 15px;
+}
+
+.game-grid.phase-discussion .discussion-side .tip-box p {
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.game-grid.phase-discussion .discussion-side .secret-recheck {
+  min-height: 48px;
+  max-height: 105px;
+  padding: 7px 9px;
+  overflow: auto;
+  border-radius: 14px;
+}
+
+.game-grid.phase-discussion .discussion-side .secret-recheck .ghost-button {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 9px;
+}
+
+.game-grid.phase-discussion .discussion-side .automatic-mechanics-status {
+  margin: 0;
+  padding: 7px 9px;
+  border-radius: 10px;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+/* Score card owns its own scrolling instead of pushing the entire page. */
+.game-grid.phase-discussion > .players-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+}
+
+.game-grid.phase-discussion > .players-panel .players-heading,
+.game-grid.phase-discussion > .players-panel .category-chip,
+.game-grid.phase-discussion > .players-panel .room-mini-stats {
+  flex: 0 0 auto;
+}
+
+.game-grid.phase-discussion > .players-panel .player-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 9px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.game-grid.phase-discussion > .players-panel .category-chip {
+  margin-top: 9px;
+  padding: 8px 9px;
+}
+
+.game-grid.phase-discussion > .players-panel .room-mini-stats {
+  margin-top: 7px;
+}
+
+/* --------------------------------------------------------------------------
+   REVEAL / SECRET
+   -------------------------------------------------------------------------- */
+/* Chat is intentionally paused in this phase, so it should not consume half of
+   the right rail. The role card is the only visual priority. */
+.game-grid.phase-reveal {
+  height: clamp(560px, calc(100dvh - 210px), 760px);
+  min-height: 560px;
+  grid-template-columns: minmax(0, 1fr) clamp(285px, 22vw, 350px);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "main players";
+  gap: 14px;
+}
+
+.game-grid.phase-reveal > .chat-panel {
+  display: none;
+}
+
+.game-grid.phase-reveal > .main-panel,
+.game-grid.phase-reveal > .players-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.game-grid.phase-reveal > .players-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.game-grid.phase-reveal > .players-panel .player-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.phase-reveal .reveal-screen {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 880px;
+  height: 100%;
+  margin: 0 auto;
+  padding: clamp(16px, 2.5vh, 28px) clamp(18px, 2.8vw, 34px);
+  overflow-y: auto;
+  justify-content: center;
+}
+
+.phase-reveal .reveal-phase-icon {
+  width: 58px;
+  height: 58px;
+  margin-bottom: 9px;
+  border-radius: 18px;
+}
+
+.phase-reveal .reveal-screen h3 {
+  margin: 5px 0 6px;
+  font-size: clamp(29px, 3vw, 42px);
+}
+
+.phase-reveal .reveal-subtitle {
+  max-width: 500px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.phase-reveal .role-reveal-stage {
+  width: min(590px, 100%);
+  min-height: 210px;
+  margin: 9px auto 7px;
+}
+
+.phase-reveal .reveal-orbit {
+  width: 205px;
+  height: 205px;
+}
+
+.phase-reveal .reveal-orbit-two {
+  width: 170px;
+  height: 170px;
+}
+
+.phase-reveal .role-card {
+  width: min(500px, 100%);
+  min-height: 188px;
+  padding: 20px 22px;
+  border-radius: 22px;
+}
+
+.phase-reveal .role-card strong {
+  font-size: clamp(30px, 3.5vw, 42px);
+}
+
+.phase-reveal .role-card-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+}
+
+.phase-reveal .seen-progress {
+  margin: 5px 0 7px;
+}
+
+.phase-reveal .phase-action,
+.phase-reveal .waiting-copy {
+  margin-top: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   NOTEBOOK / SHORT VIEWPORTS
+   -------------------------------------------------------------------------- */
+@media (max-height: 860px) and (min-width: 901px) {
+  .game-wrap {
+    padding-top: 8px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
 
-  .game-grid.phase-discussion > .chat-panel {
-    background:
-      linear-gradient(90deg, rgba(7, 11, 29, .68) 0%, rgba(7, 11, 29, .9) 36%, rgba(7, 11, 29, .99) 72%),
-      url("/investigador-na-miuda.webp") -28px bottom / clamp(210px, 27vw, 300px) auto no-repeat,
-      linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
+  .game-grid.phase-discussion,
+  .game-grid.phase-reveal {
+    height: max(540px, calc(100dvh - 205px));
+    min-height: 540px;
+  }
+
+  .game-grid.phase-discussion {
+    grid-template-rows: minmax(292px, .98fr) minmax(218px, 1.02fr);
+  }
+
+  .game-grid.phase-discussion .discussion-brief {
+    min-height: 110px;
+    padding-block: 10px;
+  }
+
+  .game-grid.phase-discussion .timer-ring {
+    width: 74px;
+    height: 74px;
+  }
+
+  .game-grid.phase-discussion .discussion-side .tip-box {
+    min-height: 62px;
+    padding-block: 8px;
+  }
+
+  .phase-reveal .reveal-screen {
+    padding-block: 12px;
+  }
+
+  .phase-reveal .reveal-phase-icon {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 6px;
+  }
+
+  .phase-reveal .role-reveal-stage {
+    min-height: 188px;
+    margin-block: 5px;
+  }
+
+  .phase-reveal .role-card {
+    min-height: 168px;
+    padding-block: 16px;
+  }
+
+  .phase-reveal .reveal-orbit {
+    width: 180px;
+    height: 180px;
+  }
+
+  .phase-reveal .reveal-orbit-two {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TABLET / MOBILE
+   -------------------------------------------------------------------------- */
+@media (max-width: 1200px) {
+  .game-grid.phase-discussion {
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 31vw, 365px);
+  }
+
+  .game-grid.phase-discussion > .chat-panel::before {
+    background-position: -32px bottom;
+    background-size: clamp(205px, 24vw, 270px) auto;
+    opacity: .18;
+  }
+
+  .game-grid.phase-discussion .chat-empty {
+    padding-left: clamp(70px, 13vw, 145px);
   }
 }
 
 @media (max-width: 900px) {
-  .game-grid.phase-discussion {
+  .game-grid.phase-discussion,
+  .game-grid.phase-reveal {
     display: flex;
     flex-direction: column;
+    height: auto;
+    min-height: 0;
     gap: 12px;
   }
 
-  .game-grid.phase-discussion > .chat-panel {
-    background:
-      linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99));
+  .game-grid.phase-discussion > .chat-panel::before {
+    display: none;
+  }
+
+  .game-grid.phase-discussion .chat-empty {
+    padding-left: 0;
+  }
+
+  .game-grid.phase-discussion .chat-empty > span {
+    display: block;
+  }
+
+  .game-grid.phase-discussion > .main-panel,
+  .game-grid.phase-discussion > .players-panel {
+    overflow: visible;
+  }
+
+  .game-grid.phase-discussion .discussion-side {
+    height: auto;
+    overflow: visible;
+  }
+
+  .game-grid.phase-discussion .discussion-brief {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .game-grid.phase-reveal > .main-panel {
+    order: 0;
+    min-height: 500px;
+    overflow: hidden;
+  }
+
+  .game-grid.phase-reveal > .players-panel {
+    order: 1;
+    min-height: 280px;
+    overflow: hidden;
+  }
+
+  .phase-reveal .reveal-screen {
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 600px) {
+  .game-grid.phase-discussion .discussion-brief {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: 11px 12px;
+  }
+
+  .game-grid.phase-discussion .timer-ring {
+    width: 66px;
+    height: 66px;
+  }
+
+  .game-grid.phase-discussion .discussion-brief > h3 {
+    font-size: 18px;
+  }
+
+  .phase-reveal .reveal-screen {
+    padding: 16px 12px;
+  }
+
+  .phase-reveal .role-reveal-stage {
+    min-height: 205px;
+  }
+
+  .phase-reveal .role-card {
+    min-height: 185px;
+    padding-inline: 14px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-grid.phase-discussion > .chat-panel {
-    background-attachment: initial;
+  .game-grid.phase-discussion > .chat-panel::before {
+    filter: none;
   }
 }
