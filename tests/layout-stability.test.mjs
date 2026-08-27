@@ -25,7 +25,8 @@ test("reveal phase prioritizes the secret card and does not reserve space for pa
   const css = await read("app/layout-stability.css");
   const page = await read("app/page.tsx");
 
-  assert.match(page, /phase-reveal/);
+  assert.match(page, /snapshot\.phase === "reveal"/);
+  assert.match(page, /game-grid phase-\$\{snapshot\.phase\}/);
   assert.match(page, /role-reveal-stage/);
   assert.match(css, /\.game-grid\.phase-reveal[\s\S]*grid-template-areas:\s*"main players"/);
   assert.match(css, /\.game-grid\.phase-reveal > \.chat-panel\s*\{[\s\S]*display:\s*none/);
