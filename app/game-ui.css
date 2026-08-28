@@ -61,7 +61,9 @@
 .player-row { display: grid; grid-template-columns: 20px 31px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 48px; padding: 6px 8px; border: 1px solid transparent; border-radius: 12px; background: rgba(30, 37, 78, .48); }
 .player-row.leader { border-color: rgba(139, 92, 246, .55); background: rgba(139, 92, 246, .12); }
 .player-order { color: var(--text-muted); font-size: 10px; font-weight: 900; text-align: center; }
-.avatar { display: inline-grid; place-items: center; width: 31px; height: 31px; border: 2px solid rgba(255,255,255,.35); border-radius: 50%; color: #171329; font-size: 12px; font-weight: 950; box-shadow: 0 5px 12px rgba(0,0,0,.22); }
+.avatar { position: relative; isolation: isolate; display: inline-grid; flex: 0 0 auto; place-items: center; width: 31px; height: 31px; overflow: hidden; border: 2px solid color-mix(in srgb, var(--avatar-accent, white) 62%, white); border-radius: 50%; background: color-mix(in srgb, var(--avatar-accent, #8b5cf6) 34%, #10152f); color: #fff; font-size: 12px; font-weight: 950; box-shadow: 0 5px 12px rgba(0,0,0,.22), 0 0 14px color-mix(in srgb, var(--avatar-accent, #8b5cf6) 24%, transparent); }
+.avatar-fallback { position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; }
+.avatar-portrait { position: absolute; inset: 0; z-index: 1; background-position: center 18%; background-repeat: no-repeat; background-size: cover; }
 .player-name { min-width: 0; display: grid; gap: 2px; }
 .player-name strong { overflow: hidden; color: var(--text-primary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .player-name small { overflow: hidden; color: var(--text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
@@ -132,11 +134,11 @@
 .extra-time-banner strong { color: var(--text-secondary); font-size: 9px; }
 .extra-time-banner small { color: var(--text-muted); font-size: 8px; }
 
-.phase-discussion { grid-template-columns: clamp(170px, 16vw, 240px) minmax(0, 1fr) clamp(290px, 25vw, 365px); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "art chat main" "art chat players"; gap: 14px; }
+.phase-discussion { grid-template-columns: clamp(230px, 18vw, 285px) minmax(0, 1fr) clamp(310px, 24vw, 385px); grid-template-rows: minmax(0, 1fr); grid-template-areas: "players chat main"; gap: 14px; }
 .phase-discussion .main-panel { grid-area: main; }
 .phase-discussion .chat-panel { grid-area: chat; }
 .phase-discussion .players-panel { grid-area: players; }
-.discussion-investigator { grid-area: art; align-self: end; width: 100%; height: 100%; max-height: 700px; object-fit: contain; object-position: bottom center; filter: drop-shadow(0 22px 30px rgba(108,92,231,.26)); pointer-events: none; }
+.discussion-investigator { display: none; }
 .discussion-side { align-items: stretch; justify-content: flex-start; gap: 12px; padding: 24px 23px; text-align: left; overflow: auto; }
 .discussion-side .micro-label { align-self: flex-start; }
 .discussion-side h3 { margin: 0; font-size: clamp(22px, 2.4vw, 31px); }
@@ -231,7 +233,7 @@
 .impostor-person, .score-row, .vote-total-row { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px; border-radius: 10px; background: rgba(255,255,255,.045); }
 .impostor-person div { display: grid; gap: 2px; }.impostor-person strong { font-size: 11px; }.impostor-person small { color: var(--text-muted); font-size: 8px; }
 .secret-reveal { display: grid; gap: 4px; margin-top: 12px; padding: 10px; border-radius: 10px; background: rgba(255,184,0,.09); }.secret-reveal small { color: var(--text-muted); font-size: 8px; }.secret-reveal strong { color: var(--color-warning); font-size: 19px; }
-.vote-total-row { display: grid; grid-template-columns: 17px 26px minmax(0,1fr) auto; gap: 7px; }.vote-total-row .avatar { width: 26px; height: 26px; font-size: 10px; }.vote-rank { color: var(--text-muted); font-size: 9px; font-weight: 900; }.vote-total-row strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.vote-total-row b { color: var(--text-secondary); font-size: 9px; white-space: nowrap; }
+.vote-total-row { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 7px; }.vote-total-row .avatar { width: 26px; height: 26px; font-size: 10px; }.vote-total-row strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.vote-total-row b { color: var(--text-secondary); font-size: 9px; white-space: nowrap; }
 .score-row { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; }.score-row .avatar { width: 26px; height: 26px; font-size: 10px; }.score-row strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.score-row > span { display: grid; justify-items: end; gap: 2px; }.score-row b { color: var(--color-warning); font-size: 11px; }.score-row small { color: var(--text-muted); font-size: 8px; }.results-note { display: block; margin-top: 11px; color: var(--text-muted); font-size: 8px; line-height: 1.4; }.points-note { position: relative; z-index: 1; margin: 17px 0 12px; color: var(--text-secondary); font-size: 11px; }
 .results-content > .phase-action { position: relative; z-index: 1; width: min(280px,100%); }.results-content .waiting-copy { position: relative; z-index: 1; }
 
@@ -244,7 +246,7 @@
 @keyframes nm-row-flash { 50% { border-color: rgba(0,212,255,.55); background: rgba(0,212,255,.1); } }
 
 @media (max-height: 820px) and (min-width: 901px) { .game-wrap { padding-top: 10px; }.room-header { min-height: 82px; padding-block: 13px; }.phase-rail { padding-block: 13px; }.phase-rail::before { top: 34px; }.phase-step > span { width: 32px; height: 32px; }.game-grid { height: calc(100dvh - 138px); min-height: 525px; }.phase-content { padding: 24px; }.discussion-side { padding: 17px; gap: 8px; }.timer-ring { width: 105px; height: 105px; }.chat-panel { padding: 13px; }.players-panel { padding: 14px; } }
-@media (max-width: 1200px) { .phase-discussion { grid-template-columns: 1fr minmax(280px, 31vw); grid-template-areas: "chat main" "chat players"; }.discussion-investigator { display: none; } }
+@media (max-width: 1180px) and (min-width: 901px) { .phase-discussion { grid-template-columns: clamp(280px, 32vw, 345px) minmax(0, 1fr); grid-template-areas: "players chat" "main chat"; }.discussion-investigator { display: none; } }
 @media (max-width: 900px) { .game-wrap { padding-top: 10px; }.hud-room { grid-template-columns: 1fr; }.room-header { min-height: 85px; padding: 17px 19px; }.room-code-block { padding-left: 14px; }.phase-rail { padding: 13px 10px; }.phase-rail::before { left: 8%; right: 8%; top: 31px; }.phase-step { flex-direction: column; gap: 4px; }.phase-step > span { width: 32px; height: 32px; }.phase-step strong { font-size: 9px; }.phase-step small { display: none; }.game-grid, .phase-discussion { display: flex; flex-direction: column; height: auto; min-height: 0; gap: 11px; }.game-grid .main-panel { order: 1; min-height: 560px; }.game-grid .chat-panel { order: 0; min-height: 430px; }.game-grid .players-panel { order: 2; max-height: none; }.phase-discussion .main-panel { min-height: auto; }.phase-discussion .chat-panel { min-height: 570px; }.phase-discussion .players-panel { max-height: none; }.phase-reveal .main-panel, .phase-voting .main-panel, .phase-results .main-panel { min-height: 600px; }.discussion-side { min-height: 520px; }.phase-title-row { flex-direction: column; }.phase-timer-chip { align-self: flex-start; }.vote-grid { grid-template-columns: repeat(3, 1fr); }.results-columns { grid-template-columns: 1fr; }.results-content { overflow: visible; }.phase-content { padding: 24px 18px; } }
 @media (max-width: 600px) { .game-wrap { padding-bottom: 28px; }.room-header { align-items: flex-start; }.room-heading h2 { font-size: 23px; }.room-code-block { grid-template-columns: 1fr auto; padding: 0; border-left: 0; }.room-code-block > span { grid-column: 1 / -1; }.room-code-block strong { font-size: 17px; }.room-code-block button { grid-row: 2; }.phase-step > span { width: 30px; height: 30px; }.phase-step strong { font-size: 8px; }.game-grid .main-panel, .phase-reveal .main-panel, .phase-voting .main-panel, .phase-results .main-panel { min-height: 520px; }.phase-discussion .chat-panel { min-height: 520px; }.players-panel { padding: 14px; }.player-list { grid-template-columns: 1fr 1fr; }.player-row { grid-template-columns: 17px 27px minmax(0,1fr); }.player-trailing { grid-column: 3; justify-content: space-between; }.player-score { font-size: 14px; }.lobby-actions { grid-template-columns: 1fr; }.vote-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }.vote-card { min-height: 125px; padding: 14px 7px; }.vote-card .avatar { width: 47px; height: 47px; }.vote-confirmation { align-items: stretch; flex-direction: column; gap: 11px; }.vote-actions { display: grid; grid-template-columns: 1fr; }.vote-actions .primary-button { width: 100%; }.phase-content h3 { font-size: 28px; }.role-card { padding: 28px 18px; }.chat-composer { grid-template-columns: minmax(0,1fr) 40px; }.emoji-menu { left: -4px; }.cinematic-card { padding: 27px 20px; }.phase-transition-toast { right: 12px; bottom: 12px; left: 12px; text-align: center; } }
 @media (prefers-reduced-motion: reduce) { .game-wrap *, .game-wrap *::before, .game-wrap *::after, .cinematic-transition, .cinematic-transition * { animation: none !important; transition: none !important; }.timer-ring { box-shadow: none; } }
@@ -266,13 +268,13 @@
 .phase-step strong { font-size: 12px; }
 .phase-step small { font-size: 9px; }
 
-.game-grid { height: clamp(700px, calc(100dvh - 148px), 900px); margin-top: 17px; gap: 16px; grid-template-columns: minmax(0, 1fr) clamp(320px, 24vw, 390px); grid-template-rows: minmax(0, 1fr) minmax(300px, auto); }
-.phase-discussion { grid-template-columns: clamp(180px, 13vw, 230px) minmax(0, 1fr) clamp(340px, 24vw, 390px); grid-template-rows: minmax(380px, 1fr) minmax(300px, auto); gap: 16px; }
+.game-grid { height: clamp(520px, calc(100dvh - 271px), 760px); margin-top: 17px; gap: 16px; grid-template-columns: minmax(0, 1fr) clamp(320px, 24vw, 390px); grid-template-rows: minmax(0, 1fr) minmax(300px, auto); }
+.phase-discussion { grid-template-columns: clamp(230px, 18vw, 285px) minmax(0, 1fr) clamp(310px, 24vw, 385px); grid-template-rows: minmax(0, 1fr); grid-template-areas: "players chat main"; gap: 16px; }
 .phase-discussion .main-panel { overflow: visible; border: 0; background: transparent; box-shadow: none; }
 .phase-discussion .chat-panel { border-color: rgba(0, 212, 255, .24); background: linear-gradient(145deg, rgba(13, 20, 48, .99), rgba(7, 11, 29, .99)); box-shadow: 0 24px 80px rgba(0, 0, 0, .38), 0 0 32px rgba(0, 212, 255, .06); }
 .phase-discussion .chat-heading h3 { font-size: 20px; }
 .phase-discussion .chat-messages { min-height: 240px; }
-.discussion-investigator { width: 100%; max-height: 760px; filter: drop-shadow(0 28px 35px rgba(108, 92, 231, .34)); }
+.discussion-investigator { display: none; }
 .discussion-side { height: 100%; align-items: stretch; justify-content: stretch; gap: 13px; padding: 0; overflow: visible; text-align: left; }
 .discussion-brief, .discussion-side .tip-box, .discussion-side .secret-recheck { min-width: 0; border-radius: 20px; box-shadow: 0 18px 45px rgba(0, 0, 0, .2); }
 .discussion-brief { display: grid; align-content: center; justify-items: center; gap: 9px; min-height: 0; padding: 19px 22px 22px; border: 1px solid rgba(0, 212, 255, .24); background: radial-gradient(circle at 50% 0%, rgba(0, 212, 255, .12), transparent 58%), linear-gradient(145deg, rgba(15, 24, 53, .98), rgba(8, 12, 31, .98)); text-align: center; }
@@ -367,26 +369,26 @@
 @keyframes cinematic-particle { 0%, 100% { opacity: 0; transform: translateY(13px) scale(.65); } 24% { opacity: .9; } 60% { opacity: .65; transform: translateY(-14px) scale(1); } }
 
 @media (max-height: 860px) and (min-width: 901px) {
-  .game-grid { height: calc(100dvh - 143px); min-height: 700px; }
-  .phase-discussion { grid-template-rows: minmax(350px, 1fr) minmax(280px, auto); }
+  .game-grid { height: clamp(480px, calc(100dvh - 219px), 640px); min-height: 0; }
+  .phase-discussion { grid-template-rows: minmax(0, 1fr); }
   .discussion-brief { padding-block: 15px; }
   .discussion-side .tip-box { min-height: 92px; padding-block: 12px; }
   .discussion-side .secret-recheck { min-height: 62px; padding-block: 8px; }
   .role-reveal-stage { min-height: 245px; }
   .role-card { min-height: 215px; padding-block: 24px; }
 }
-@media (max-width: 1200px) {
+@media (max-width: 1180px) and (min-width: 901px) {
   .hud-room { grid-template-columns: minmax(330px, .75fr) minmax(0, 1.25fr); }
-  .phase-discussion { grid-template-columns: minmax(0, 1fr) clamp(320px, 31vw, 390px); grid-template-areas: "chat main" "chat players"; }
+  .phase-discussion { grid-template-columns: clamp(280px, 32vw, 345px) minmax(0, 1fr); grid-template-areas: "players chat" "main chat"; }
   .discussion-investigator { display: none; }
 }
 @media (max-width: 900px) {
   .game-wrap { padding-inline: 0; }
   .game-grid { height: auto; min-height: 0; }
   .phase-discussion { display: flex; flex-direction: column; gap: 12px; }
-  .phase-discussion .main-panel { order: 1; min-height: 0; }
-  .phase-discussion .chat-panel { order: 0; min-height: 560px; }
-  .phase-discussion .players-panel { order: 2; min-height: 0; }
+  .phase-discussion .players-panel { order: 0; min-height: 0; }
+  .phase-discussion .chat-panel { order: 1; min-height: 560px; }
+  .phase-discussion .main-panel { order: 2; min-height: 0; }
   .discussion-side { height: auto; }
   .discussion-brief { min-height: 260px; }
   .discussion-side .tip-box { min-height: 0; }

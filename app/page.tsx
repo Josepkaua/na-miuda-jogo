@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import Image from "next/image";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
+import { getCharacterProfile } from "../lib/character-profiles";
 
 type ThemeMode = "system" | "light" | "dark";
 type EntryMode = "create" | "join";
@@ -81,7 +81,15 @@ const categories = [
   { id: "misturado", label: "Tudo misturado", icon: "🎲", hint: "uma surpresa a cada rodada" },
 ];
 
-const demoNames = ["Bia", "Davi", "Luna", "João", "Malu", "Caio", "Nina"];
+const demoPlayers = [
+  { id: "demo:bia", name: "Bia" },
+  { id: "demo:lucas", name: "Lucas" },
+  { id: "demo:ana", name: "Ana" },
+  { id: "demo:joao", name: "João" },
+  { id: "demo:pedro", name: "Pedro" },
+  { id: "demo:marina", name: "Marina" },
+  { id: "demo:rafa", name: "Rafa" },
+];
 const phaseLabels: Record<Phase, string> = {
   lobby: "Sala de espera",
   reveal: "Papel secreto",
@@ -175,8 +183,8 @@ function normalizeChatMessages(value: unknown): ChatMessage[] {
 function makeDemoSnapshot(nickname: string, limit: number, category: string, seconds: number, impostors: number): Snapshot {
   const total = Math.min(Math.max(4, limit), 8);
   const players: Player[] = [
-    { id: "me", nickname, isMe: true, isHost: true, isReady: false, isOnline: true, score: 0 },
-    ...demoNames.slice(0, total - 1).map((name) => ({ id: name.toLowerCase(), nickname: name, isMe: false, isHost: false, isReady: true, isOnline: true, score: 0 })),
+    { id: "demo:nina", nickname, isMe: true, isHost: true, isReady: false, isOnline: true, score: 0 },
+    ...demoPlayers.slice(0, total - 1).map((player) => ({ id: player.id, nickname: player.name, isMe: false, isHost: false, isReady: true, isOnline: true, score: 0 })),
   ];
   return {
     roomId: "demo-room", code: "JOGAR", phase: "lobby", category,
@@ -233,6 +241,7 @@ export default function Home() {
   const readyCount = snapshot?.players.filter((player) => player.isOnline && player.isReady).length ?? 0;
   const onlineCount = snapshot?.players.filter((player) => player.isOnline).length ?? 0;
   const leaderScore = Math.max(0, ...(snapshot?.players.map((player) => player.score) ?? [0]));
+  const rosterPlayerIds = snapshot?.players.map((player) => player.id) ?? [];
   const roomCode = snapshot?.code;
   const suggestion = recommendationFor(playerLimit);
   const maxImpostors = Math.max(1, Math.min(5, Math.floor((playerLimit - 1) / 3)));
@@ -752,7 +761,7 @@ export default function Home() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${snapshot ? `game-active game-phase-${snapshot.phase}` : "landing-active"}`}>
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
         <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><span className="brand-logo" aria-hidden="true" /><span>Na Miúda!</span></button>
@@ -824,7 +833,6 @@ export default function Home() {
             </div>
           </section>
           <div className={`game-grid phase-${snapshot.phase} ${snapshot.phase === "discussion" ? "chat-focus" : ""}`}>
-            {snapshot.phase === "discussion" && <Image className="discussion-investigator" src="/investigador-na-miuda.webp" width={360} height={720} sizes="(max-width: 900px) 0px, 24vw" priority alt="" aria-hidden="true" />}
             <section className="main-panel panel">
               {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
@@ -850,7 +858,7 @@ export default function Home() {
               {snapshot.phase === "results" && <Results snapshot={snapshot} selectedVote={selectedVote} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
             </section>
 
-            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar name={player.nickname} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
+            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
             <ChatPanel
               snapshot={snapshot}
               messages={chatMessages}
@@ -993,6 +1001,7 @@ function ChatPanel({
   onDiscussionChoice: (choice: DiscussionChoice) => void;
 }) {
   const phase = snapshot.phase;
+  const rosterPlayerIds = snapshot.players.map((player) => player.id);
   const initialDiscussionEnded = phase === "discussion"
     && (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns")
     && snapshot.discussionVoteCount === 0
@@ -1030,7 +1039,7 @@ function ChatPanel({
       {snapshot.hasDiscussionVoted && <small className="decision-waiting">Seu voto foi contado. Aguardando a turma…</small>}
     </div> : <div className="chat-messages" ref={listRef} onScroll={onScroll} aria-live="polite" aria-relevant="additions">
       {loading && messages.length === 0 ? <div className="chat-empty"><span>•••</span><strong>Abrindo a conversa...</strong></div> : messages.length === 0 ? <div className="chat-empty"><span>🕵️</span><strong>O silêncio já está suspeito</strong><p>Quebre o gelo antes que alguém pareça culpado demais.</p></div> : messages.map((message) => <div className={`chat-message ${message.isMe ? "mine" : ""}`} key={message.id}>
-        {!message.isMe && <Avatar name={message.nickname} />}
+        {!message.isMe && <Avatar playerId={message.playerId} name={message.nickname} rosterPlayerIds={rosterPlayerIds} />}
         <div><span><strong>{message.isMe ? "Você" : message.nickname}</strong><time dateTime={message.createdAt}>{formatChatTime(message.createdAt)}</time></span><p>{message.body}</p></div>
       </div>)}
     </div>}
@@ -1062,11 +1071,12 @@ function VotingScreen({ snapshot, selectedVote, secondsLeft, busy, isHost, onSel
   onReveal: () => void;
 }) {
   const candidates = snapshot.players.filter((player) => !player.isMe);
+  const rosterPlayerIds = snapshot.players.map((player) => player.id);
   const progress = snapshot.eligibleVoterCount ? Math.min(100, snapshot.voteCount / snapshot.eligibleVoterCount * 100) : 0;
   return <section className="phase-content voting-screen" aria-labelledby="voting-title">
     <div className="phase-title-row"><div><span className="micro-label">Rodada {snapshot.roundNumber} • Votação</span><h3 id="voting-title">Quem é o impostor?</h3><p className="phase-description vote-copy">Escolha em segredo. Depois de confirmar, seu voto fica travado.</p></div><div className="phase-timer-chip"><PhaseIcon name="timer" size={17} /><strong>{secondsLeft === null ? "--:--" : formatTime(secondsLeft)}</strong><small>para votar</small></div></div>
-    <div className="vote-grid" role="listbox" aria-label="Escolha um jogador para acusar" aria-activedescendant={selectedVote ? `candidate-${selectedVote}` : undefined}>
-      {candidates.map((player) => <button id={`candidate-${player.id}`} role="option" key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-selected={selectedVote === player.id} onClick={() => onSelect(player.id)}><Avatar name={player.nickname} /><span>{player.nickname}</span><i aria-hidden="true">{selectedVote === player.id ? <PhaseIcon name="check" size={16} /> : null}</i></button>)}
+    <div className="vote-grid" role="group" aria-label="Escolha um jogador para acusar">
+      {candidates.map((player) => <button type="button" id={`candidate-${player.id}`} key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-pressed={selectedVote === player.id} onClick={() => onSelect(player.id)}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><span>{player.nickname}</span><i aria-hidden="true">{selectedVote === player.id ? <PhaseIcon name="check" size={16} /> : null}</i></button>)}
     </div>
     <div className="vote-confirmation"><span>Seu voto: <strong>{selectedVote ? candidates.find((player) => player.id === selectedVote)?.nickname : "—"}</strong></span><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy || snapshot.hasVoted} onClick={onConfirm}>{snapshot.hasVoted ? <><PhaseIcon name="check" size={16} /> Voto confirmado</> : "Confirmar voto"}</button>{isHost && <button className="ghost-button" aria-hidden="true" tabIndex={-1} disabled={busy || snapshot.voteCount < snapshot.eligibleVoterCount && secondsLeft !== 0 && !snapshot.hasVoted} onClick={onReveal}>Revelar resultado</button>}</div></div>
     <div className="vote-progress"><span>{snapshot.voteCount} de {snapshot.eligibleVoterCount} votos confirmados{secondsLeft !== null ? ` • encerra em ${formatTime(secondsLeft)}` : ""}</span><div><i style={{ width: `${progress}%` }} /></div></div>
@@ -1083,6 +1093,8 @@ function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snaps
   const eliminated = snapshot.players.filter((player) => snapshot.eliminatedPlayerIds.includes(player.id));
   const impostors = snapshot.players.filter((player) => snapshot.impostorPlayerIds.includes(player.id));
   const ranking = [...snapshot.players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
+  const voteSummary = [...snapshot.players].sort((a, b) => Number(snapshot.eliminatedPlayerIds.includes(b.id)) - Number(snapshot.eliminatedPlayerIds.includes(a.id)) || a.nickname.localeCompare(b.nickname));
+  const rosterPlayerIds = snapshot.players.map((player) => player.id);
   const groupWon = snapshot.winner === "group";
   const plural = impostors.length > 1;
   const roundPoints = (player: Player) => {
@@ -1094,12 +1106,11 @@ function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snaps
   };
   return <section className={`phase-content results-content ${groupWon ? "result-group-win" : "result-impostor-win"}`} aria-labelledby="results-title">
     <div className="result-confetti" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div>
-    <div className={`result-burst ${groupWon ? "caught" : "escaped"}`} aria-hidden="true"><PhaseIcon name={groupWon ? "trophy" : "alert"} size={42} /></div>
-    <div className="results-heading"><span className="micro-label">Resultado da Rodada {snapshot.roundNumber}</span><h3 id="results-title">{groupWon ? "A turma venceu!" : "O impostor escapou!"}</h3><p>Os votos decidiram — a verdade veio à tona.</p></div>
+    <div className="results-hero"><div className="results-heading"><span className="micro-label">Resultado da Rodada {snapshot.roundNumber}</span><h3 id="results-title">{groupWon ? "A turma venceu!" : "O impostor escapou!"}</h3><p>Os votos decidiram — a verdade veio à tona.</p></div><div className={`result-burst ${groupWon ? "caught" : "escaped"}`} aria-hidden="true"><PhaseIcon name={groupWon ? "trophy" : "alert"} size={36} /></div></div>
     <div className="results-columns">
-      <section className="results-panel impostor-panel"><span className="panel-kicker"><PhaseIcon name="alert" size={14} /> {plural ? "Impostores" : "Impostor"}</span><div className="impostor-list">{impostors.length ? impostors.map((player) => <div className="impostor-person" key={player.id}><Avatar name={player.nickname} /><div><strong>{player.nickname}</strong><small>identidade revelada</small></div></div>) : <strong>Identidade indisponível</strong>}</div><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div></section>
-      <section className="results-panel votes-panel"><span className="panel-kicker"><PhaseIcon name="vote" size={14} /> Votação</span><div className="vote-totals">{ranking.map((player, index) => <div className="vote-total-row" key={player.id}><span className="vote-rank">{index + 1}</span><Avatar name={player.nickname} /><strong>{player.nickname}</strong><b>{snapshot.eliminatedPlayerIds.includes(player.id) ? "faixa vencedora" : "voto registrado"}</b></div>)}</div><small className="results-note">{eliminated.length ? `${eliminated.map((player) => player.nickname).join(" e ")} ficou${eliminated.length > 1 ? "ram" : ""} na faixa mais votada. A contagem individual permanece privada.` : "Sem eliminação nesta votação. A contagem individual permanece privada."}</small></section>
-      <section className="results-panel score-panel"><span className="panel-kicker"><PhaseIcon name="trophy" size={14} /> Pontuação</span><div className="score-list">{ranking.map((player) => <div className="score-row" key={player.id}><Avatar name={player.nickname} /><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><span><b>+{roundPoints(player)}</b><small>{player.score} total</small></span></div>)}</div><small className="results-note">Impostor vencedor +3 • equipe vencedora +2 • voto correto em impostor +1</small></section>
+      <section className="results-panel impostor-panel"><span className="panel-kicker"><PhaseIcon name="alert" size={14} /> {plural ? "Impostores" : "Impostor"}</span><div className="impostor-list">{impostors.length ? impostors.map((player) => <div className="impostor-person" key={player.id}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><div><strong>{player.nickname}</strong><small>identidade revelada</small></div></div>) : <strong>Identidade indisponível</strong>}</div><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div></section>
+      <section className="results-panel votes-panel"><span className="panel-kicker"><PhaseIcon name="vote" size={14} /> Votação</span><div className="vote-totals">{voteSummary.map((player) => <div className="vote-total-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}</strong><b>{snapshot.eliminatedPlayerIds.includes(player.id) ? "faixa mais votada" : "voto registrado"}</b></div>)}</div><small className="results-note">{eliminated.length ? `${eliminated.map((player) => player.nickname).join(" e ")} ficou${eliminated.length > 1 ? "ram" : ""} na faixa mais votada. A contagem individual permanece privada.` : "Sem eliminação nesta votação. A contagem individual permanece privada."}</small></section>
+      <section className="results-panel score-panel"><span className="panel-kicker"><PhaseIcon name="trophy" size={14} /> Pontuação</span><div className="score-list">{ranking.map((player) => <div className="score-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><span><b>+{roundPoints(player)}</b><small>{player.score} total</small></span></div>)}</div><small className="results-note">Impostor vencedor +3 • equipe vencedora +2 • voto correto em impostor +1</small></section>
     </div>
     <div className="points-note">{groupWon ? "A turma encontrou todos os impostores." : "O impostor ainda está entre vocês — ninguém está seguro."}</div>
     {isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Próxima rodada <span aria-hidden="true">→</span></button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}
@@ -1117,10 +1128,9 @@ function RulesModal({ onClose }: { onClose: () => void }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja seu segredo.</b><span>Os jogadores recebem a palavra; os impostores recebem o assunto e uma dica ampla.</span></li><li><b>Conversem livremente.</b><span>Façam perguntas, deem pistas e organizem a discussão pelo chat sem escrever a palavra.</span></li><li><b>Decidam e votem.</b><span>O grupo escolhe mais tempo de chat ou vai direto apontar o impostor.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Os papéis são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
 }
 
-function Avatar({ name }: { name: string }) {
-  const palette = ["#d8ff55", "#76d7ff", "#ffb25e", "#ff7bb0", "#b69cff"];
-  const color = palette[name.split("").reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % palette.length];
-  return <span className="avatar" style={{ background: color }}>{name.slice(0, 1).toUpperCase()}</span>;
+function Avatar({ playerId, name, rosterPlayerIds }: { playerId: string; name: string; rosterPlayerIds: string[] }) {
+  const profile = getCharacterProfile(playerId, rosterPlayerIds);
+  return <span className="avatar" style={{ "--avatar-accent": profile.accent } as CSSProperties} aria-hidden="true"><span className="avatar-fallback">{name.slice(0, 1).toUpperCase()}</span><span className="avatar-portrait" style={{ backgroundImage: `url("${profile.src}")` }} /></span>;
 }
 
 function formatTime(total: number) {

@@ -38,14 +38,17 @@ test("renders the production identity and social metadata", async () => {
 });
 
 test("keeps the discussion chat usable on narrow screens", async () => {
-  const [baseCss, css] = await Promise.all([
+  const [baseCss, css, stability] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/game-ui.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout-stability.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(baseCss, /\.app-shell\s*\{[^}]*overflow-x:\s*clip;/s);
   assert.match(css, /@media\s*\(max-width:\s*900px\)/);
-  assert.match(css, /\.phase-discussion\s*\{[^}]*grid-template-areas:\s*"art chat main"\s*"art chat players";/s);
+  assert.match(stability, /\.game-grid\.phase-discussion\s*\{[^}]*grid-template-areas:\s*"players chat main";/s);
+  assert.match(stability, /@media\s*\(max-width:\s*900px\)[\s\S]*players-panel[\s\S]*order:\s*0[\s\S]*chat-panel[\s\S]*order:\s*1/);
+  assert.doesNotMatch(css, /"art chat main"/);
   assert.match(css, /\.chat-messages\s*\{[^}]*min-height:/s);
 });
 
