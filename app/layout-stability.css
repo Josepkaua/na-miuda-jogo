@@ -730,6 +730,31 @@
 
 }
 
+@media (max-width: 1050px) and (min-width: 901px) {
+  .game-grid.phase-lobby {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .game-grid.phase-lobby > .main-panel,
+  .game-grid.phase-lobby > .players-panel,
+  .game-grid.phase-lobby > .chat-panel {
+    flex: 0 0 auto;
+  }
+
+  .game-grid.phase-lobby > .main-panel,
+  .game-grid.phase-lobby .lobby-content {
+    height: auto;
+    overflow: visible;
+  }
+
+  .game-grid.phase-lobby .lobby-setup-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .app-shell.game-active::after {
     display: none;

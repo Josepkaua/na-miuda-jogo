@@ -120,7 +120,7 @@ test("uses cinematic transitions without sacrificing accessibility or mechanical
   assert.match(guard, /kind:\s*"group"/);
   assert.match(guard, /kind:\s*"impostor"/);
   assert.match(guard, /cinematic-\$\{cinematic\.kind\}/);
-  assert.match(guard, /currentText === text/);
+  assert.match(guard, /cinematicLocks\.current\.has\(roleKey\)/);
   assert.match(controller, /syncDiscussionUrgency\(\)/);
   assert.match(controller, /syncVotingUrgency\(\)/);
   assert.match(controller, /Vote agora — Na Miúda!/);
@@ -134,15 +134,17 @@ test("uses cinematic transitions without sacrificing accessibility or mechanical
   assert.match(polish, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("uses harder impostor hints and the 3-2-plus-1 scoring model", async () => {
+test("preserves the word-specific impostor hint and the 3-2-plus-1 scoring model", async () => {
   const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const sql = await readFile(new URL("../supabase/migrations/20260824041000_gameplay_scoring_and_hints.sql", import.meta.url), "utf8");
 
-  assert.match(guard, /const hardImpostorHints: Record<string, string\[]>/);
-  assert.match(guard, /syncHardImpostorHints\(\)/);
-  assert.match(guard, /Pense mais na ocasião e na experiência de comer/);
-  assert.match(guard, /Pode ser pessoa, lugar, regra, ação, competição/);
-  assert.doesNotMatch(guard, /É comum em lanches, festas e vitrines de padarias/);
+  assert.doesNotMatch(guard, /hardImpostorHints/);
+  assert.doesNotMatch(guard, /syncHardImpostorHints/);
+  assert.doesNotMatch(guard, /replaceTextAfterLabel/);
+  assert.match(page, /<span className="role-hint"><b>Dica secreta<\/b>\{currentRoleInfo\.hint\}<\/span>/);
+  assert.match(page, /currentRoleInfo\.hint \?\? "Escute as palavras que mais se repetem/);
+  assert.match(page, /currentRoleInfo\.role === "impostor" && currentRoleInfo\.hint && <p>\{currentRoleInfo\.hint\}<\/p>/);
 
   assert.match(sql, /set impostor_hint = case category/i);
   assert.match(sql, /set score = p\.score \+ 2[\s\S]*rr\.role = 'player'/i);

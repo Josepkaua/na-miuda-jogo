@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
-import { getCharacterProfile } from "../lib/character-profiles";
+import { characterProfiles, getCharacterProfile, getCharacterProfileById } from "../lib/character-profiles";
 
 type ThemeMode = "system" | "light" | "dark";
 type EntryMode = "create" | "join";
@@ -15,6 +16,7 @@ type RevealMotion = "idle" | "scanning" | "revealed";
 type Player = {
   id: string;
   nickname: string;
+  avatarId?: string;
   isMe: boolean;
   isHost: boolean;
   isReady: boolean;
@@ -180,11 +182,22 @@ function normalizeChatMessages(value: unknown): ChatMessage[] {
   }).filter((message) => Number.isFinite(message.id) && message.body.length > 0);
 }
 
-function makeDemoSnapshot(nickname: string, limit: number, category: string, seconds: number, impostors: number): Snapshot {
+function mergeAvatarChoices(next: Snapshot, current: Snapshot | null, ownAvatarId: string, presenceAvatars = new Map<string, string>()): Snapshot {
+  const currentAvatars = new Map(current?.players.map((player) => [player.id, player.avatarId]));
+  return {
+    ...next,
+    players: next.players.map((player) => ({
+      ...player,
+      avatarId: player.isMe ? ownAvatarId : presenceAvatars.get(player.id) ?? currentAvatars.get(player.id),
+    })),
+  };
+}
+
+function makeDemoSnapshot(nickname: string, limit: number, category: string, seconds: number, impostors: number, avatarId: string): Snapshot {
   const total = Math.min(Math.max(4, limit), 8);
   const players: Player[] = [
-    { id: "demo:nina", nickname, isMe: true, isHost: true, isReady: false, isOnline: true, score: 0 },
-    ...demoPlayers.slice(0, total - 1).map((player) => ({ id: player.id, nickname: player.name, isMe: false, isHost: false, isReady: true, isOnline: true, score: 0 })),
+    { id: "demo:nina", nickname, avatarId, isMe: true, isHost: true, isReady: false, isOnline: true, score: 0 },
+    ...demoPlayers.slice(0, total - 1).map((player) => ({ id: player.id, nickname: player.name, avatarId: player.id.slice(5), isMe: false, isHost: false, isReady: true, isOnline: true, score: 0 })),
   ];
   return {
     roomId: "demo-room", code: "JOGAR", phase: "lobby", category,
@@ -199,6 +212,7 @@ export default function Home() {
   const [theme, setTheme] = useState<ThemeMode>("system");
   const [entryMode, setEntryMode] = useState<EntryMode>("create");
   const [nickname, setNickname] = useState("");
+  const [selectedAvatarId, setSelectedAvatarId] = useState("nina");
   const [email, setEmail] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [category, setCategory] = useState("misturado");
@@ -233,6 +247,9 @@ export default function Home() {
   const chatScroll = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChat = useRef(true);
   const revealTimer = useRef<number | null>(null);
+  const selectedAvatarRef = useRef("nina");
+  const avatarChannelRef = useRef<RealtimeChannel | null>(null);
+  const presenceAvatarsRef = useRef(new Map<string, string>());
 
   const remoteEnabled = hasRemoteBackend();
   const me = snapshot?.players.find((player) => player.isMe);
@@ -259,10 +276,16 @@ export default function Home() {
     document.documentElement.dataset.theme = storedTheme;
     const code = new URLSearchParams(window.location.search).get("sala");
     const storedName = localStorage.getItem("na-miuda-nickname");
+    const storedAvatarId = localStorage.getItem("na-miuda-avatar");
+    const savedAvatar = getCharacterProfileById(storedAvatarId);
     const frame = window.requestAnimationFrame(() => {
       setTheme(storedTheme);
       if (code) setJoinCode(code.toUpperCase().slice(0, 6));
       if (storedName) setNickname(storedName);
+      if (savedAvatar) {
+        selectedAvatarRef.current = savedAvatar.id;
+        setSelectedAvatarId(savedAvatar.id);
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -348,9 +371,61 @@ export default function Home() {
       }
       lastSnapshotPhase.current = normalized.phase;
       if (normalized.serverNow) setClockOffsetMs(new Date(normalized.serverNow).getTime() - Date.now());
-      setSnapshot(normalized);
+      setSnapshot((current) => mergeAvatarChoices(normalized, current, selectedAvatarRef.current, presenceAvatarsRef.current));
     }
   }, []);
+
+  useEffect(() => {
+    if (!roomCode || demoMode || !remoteEnabled || !me?.id) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const playerId = me.id;
+    const presenceAvatars = presenceAvatarsRef.current;
+    const channel = supabase.channel(`room-avatar:${roomCode}`, { config: { presence: { key: playerId } } });
+    avatarChannelRef.current = channel;
+    presenceAvatars.clear();
+
+    const syncAvatars = () => {
+      const avatarByPlayerId = new Map<string, { avatarId: string; updatedAt: number }>();
+      for (const presences of Object.values(channel.presenceState())) {
+        for (const presence of presences as Array<{ player_id?: unknown; avatar_id?: unknown; updated_at?: unknown }>) {
+          const presencePlayerId = String(presence.player_id ?? "");
+          const presenceAvatarId = String(presence.avatar_id ?? "");
+          const updatedAt = Number(presence.updated_at ?? 0);
+          if (presencePlayerId && getCharacterProfileById(presenceAvatarId)) {
+            const previous = avatarByPlayerId.get(presencePlayerId);
+            if (!previous || updatedAt >= previous.updatedAt) avatarByPlayerId.set(presencePlayerId, { avatarId: presenceAvatarId, updatedAt });
+          }
+        }
+      }
+      avatarByPlayerId.set(playerId, { avatarId: selectedAvatarRef.current, updatedAt: Date.now() });
+      for (const [presencePlayerId, choice] of avatarByPlayerId) {
+        presenceAvatars.set(presencePlayerId, choice.avatarId);
+      }
+      setSnapshot((current) => current ? {
+        ...current,
+        players: current.players.map((player) => ({
+          ...player,
+          avatarId: avatarByPlayerId.get(player.id)?.avatarId ?? player.avatarId,
+        })),
+      } : current);
+    };
+
+    channel
+      .on("presence", { event: "sync" }, syncAvatars)
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void channel.track({ player_id: playerId, avatar_id: selectedAvatarRef.current, updated_at: Date.now() });
+        }
+      });
+
+    return () => {
+      if (avatarChannelRef.current === channel) avatarChannelRef.current = null;
+      presenceAvatars.clear();
+      void channel.untrack();
+      void supabase.removeChannel(channel);
+    };
+  }, [demoMode, me?.id, remoteEnabled, roomCode]);
 
   const loadChatMessages = useCallback(async (code: string, silent = false) => {
     if (activeRoomCode.current !== code) return;
@@ -470,6 +545,19 @@ export default function Home() {
     setNickname(value); setError(""); void updateProfile({ display_name: value }); return value;
   }
 
+  function selectAvatar(avatarId: string) {
+    const profile = getCharacterProfileById(avatarId);
+    if (!profile) return;
+    selectedAvatarRef.current = profile.id;
+    setSelectedAvatarId(profile.id);
+    localStorage.setItem("na-miuda-avatar", profile.id);
+    if (me?.id) void avatarChannelRef.current?.track({ player_id: me.id, avatar_id: profile.id, updated_at: Date.now() });
+    setSnapshot((current) => current ? {
+      ...current,
+      players: current.players.map((player) => player.isMe ? { ...player, avatarId: profile.id } : player),
+    } : current);
+  }
+
   function prepareChatForRoom() {
     latestChatRequest.current += 1;
     lastChatId.current = null;
@@ -487,7 +575,7 @@ export default function Home() {
       if (!remoteEnabled) {
         prepareChatForRoom();
         setDemoMode(true);
-        setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount));
+        setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount, selectedAvatarRef.current));
         setNotice("Demonstração aberta com jogadores simulados.");
         return;
       }
@@ -513,7 +601,7 @@ export default function Home() {
     setBusy(true); setError(""); setNotice("");
     try {
       if (!remoteEnabled) {
-        prepareChatForRoom(); setDemoMode(true); setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount));
+        prepareChatForRoom(); setDemoMode(true); setSnapshot(makeDemoSnapshot(validName, playerLimit, category, discussionSeconds, impostorCount, selectedAvatarRef.current));
         setNotice("A conexão remota está sendo preparada; você entrou na demonstração."); return;
       }
       const supabase = getSupabaseClient();
@@ -789,6 +877,7 @@ export default function Home() {
             <div className="entry-tabs" role="tablist" aria-label="Escolher como jogar"><button type="button" role="tab" aria-selected={entryMode === "create"} className={entryMode === "create" ? "active" : ""} onClick={() => setEntryMode("create")}>Criar sala</button><button type="button" role="tab" aria-selected={entryMode === "join"} className={entryMode === "join" ? "active" : ""} onClick={() => setEntryMode("join")}>Tenho um código</button></div>
             <label className="field-label" htmlFor="nickname">Seu apelido</label>
             <input id="nickname" className="text-input" value={nickname} maxLength={20} onChange={(event) => setNickname(event.target.value)} placeholder="Ex.: Kauã" autoComplete="nickname" />
+            <AvatarPicker name="entry-avatar" value={selectedAvatarId} onChange={selectAvatar} />
 
             {entryMode === "create" ? <>
               <div className="quick-settings">
@@ -834,7 +923,7 @@ export default function Home() {
           </section>
           <div className={`game-grid phase-${snapshot.phase} ${snapshot.phase === "discussion" ? "chat-focus" : ""}`}>
             <section className="main-panel panel">
-              {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
+              {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} selectedAvatarId={selectedAvatarId} onSelectAvatar={selectAvatar} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
                 <section className={`phase-content centered-phase reveal-screen reveal-${revealMotion}`} aria-labelledby="reveal-title">
                   <div className={`phase-icon reveal-phase-icon ${revealMotion}`}><PhaseIcon name={revealMotion === "scanning" ? "search" : roleVisible ? currentRoleInfo?.role === "impostor" ? "alert" : "lock" : "eye"} size={34} /></div>
@@ -858,7 +947,7 @@ export default function Home() {
               {snapshot.phase === "results" && <Results snapshot={snapshot} selectedVote={selectedVote} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
             </section>
 
-            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
+            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
             <ChatPanel
               snapshot={snapshot}
               messages={chatMessages}
@@ -1002,6 +1091,7 @@ function ChatPanel({
 }) {
   const phase = snapshot.phase;
   const rosterPlayerIds = snapshot.players.map((player) => player.id);
+  const playersById = new Map(snapshot.players.map((player) => [player.id, player]));
   const initialDiscussionEnded = phase === "discussion"
     && (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns")
     && snapshot.discussionVoteCount === 0
@@ -1039,7 +1129,7 @@ function ChatPanel({
       {snapshot.hasDiscussionVoted && <small className="decision-waiting">Seu voto foi contado. Aguardando a turma…</small>}
     </div> : <div className="chat-messages" ref={listRef} onScroll={onScroll} aria-live="polite" aria-relevant="additions">
       {loading && messages.length === 0 ? <div className="chat-empty"><span>•••</span><strong>Abrindo a conversa...</strong></div> : messages.length === 0 ? <div className="chat-empty"><span>🕵️</span><strong>O silêncio já está suspeito</strong><p>Quebre o gelo antes que alguém pareça culpado demais.</p></div> : messages.map((message) => <div className={`chat-message ${message.isMe ? "mine" : ""}`} key={message.id}>
-        {!message.isMe && <Avatar playerId={message.playerId} name={message.nickname} rosterPlayerIds={rosterPlayerIds} />}
+        {!message.isMe && <Avatar playerId={message.playerId} name={message.nickname} avatarId={playersById.get(message.playerId)?.avatarId} rosterPlayerIds={rosterPlayerIds} />}
         <div><span><strong>{message.isMe ? "Você" : message.nickname}</strong><time dateTime={message.createdAt}>{formatChatTime(message.createdAt)}</time></span><p>{message.body}</p></div>
       </div>)}
     </div>}
@@ -1076,17 +1166,17 @@ function VotingScreen({ snapshot, selectedVote, secondsLeft, busy, isHost, onSel
   return <section className="phase-content voting-screen" aria-labelledby="voting-title">
     <div className="phase-title-row"><div><span className="micro-label">Rodada {snapshot.roundNumber} • Votação</span><h3 id="voting-title">Quem é o impostor?</h3><p className="phase-description vote-copy">Escolha em segredo. Depois de confirmar, seu voto fica travado.</p></div><div className="phase-timer-chip"><PhaseIcon name="timer" size={17} /><strong>{secondsLeft === null ? "--:--" : formatTime(secondsLeft)}</strong><small>para votar</small></div></div>
     <div className="vote-grid" role="group" aria-label="Escolha um jogador para acusar">
-      {candidates.map((player) => <button type="button" id={`candidate-${player.id}`} key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-pressed={selectedVote === player.id} onClick={() => onSelect(player.id)}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><span>{player.nickname}</span><i aria-hidden="true">{selectedVote === player.id ? <PhaseIcon name="check" size={16} /> : null}</i></button>)}
+      {candidates.map((player) => <button type="button" id={`candidate-${player.id}`} key={player.id} className={`vote-card ${selectedVote === player.id ? "selected" : ""}`} disabled={snapshot.hasVoted} aria-pressed={selectedVote === player.id} onClick={() => onSelect(player.id)}><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><span>{player.nickname}</span><i aria-hidden="true">{selectedVote === player.id ? <PhaseIcon name="check" size={16} /> : null}</i></button>)}
     </div>
     <div className="vote-confirmation"><span>Seu voto: <strong>{selectedVote ? candidates.find((player) => player.id === selectedVote)?.nickname : "—"}</strong></span><div className="vote-actions"><button className="primary-button" disabled={!selectedVote || busy || snapshot.hasVoted} onClick={onConfirm}>{snapshot.hasVoted ? <><PhaseIcon name="check" size={16} /> Voto confirmado</> : "Confirmar voto"}</button>{isHost && <button className="ghost-button" aria-hidden="true" tabIndex={-1} disabled={busy || snapshot.voteCount < snapshot.eligibleVoterCount && secondsLeft !== 0 && !snapshot.hasVoted} onClick={onReveal}>Revelar resultado</button>}</div></div>
     <div className="vote-progress"><span>{snapshot.voteCount} de {snapshot.eligibleVoterCount} votos confirmados{secondsLeft !== null ? ` • encerra em ${formatTime(secondsLeft)}` : ""}</span><div><i style={{ width: `${progress}%` }} /></div></div>
   </section>;
 }
 
-function Lobby({ snapshot, me, readyCount, selectedCategory, toggleReady, startRound, busy }: { snapshot: Snapshot; me?: Player; readyCount: number; selectedCategory: (typeof categories)[number]; toggleReady: () => void; startRound: () => void; busy: boolean }) {
+function Lobby({ snapshot, me, readyCount, selectedCategory, selectedAvatarId, onSelectAvatar, toggleReady, startRound, busy }: { snapshot: Snapshot; me?: Player; readyCount: number; selectedCategory: (typeof categories)[number]; selectedAvatarId: string; onSelectAvatar: (avatarId: string) => void; toggleReady: () => void; startRound: () => void; busy: boolean }) {
   const onlinePlayers = snapshot.players.filter((player) => player.isOnline);
   const canStart = onlinePlayers.length >= 3 && readyCount === onlinePlayers.length;
-  return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>A turma está chegando</h3><p>Compartilhe o código, combine a partida no chat e marque “Estou pronto”. Os papéis e a palavra serão sorteados com segurança no servidor.</p></div><div className="settings-card"><div className="settings-title"><strong>Ficha desta partida</strong><span>Escolhida pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">{selectedCategory.icon}</span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">👥</span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">⏱️</span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para conversa e suspeitas</small></div></div><span className="setting-value">Por rodada</span></div></div><div className="ready-box"><div><strong>{readyCount}/{onlinePlayers.length} online prontos</strong><span>{onlinePlayers.length < 3 ? `Faltam ${3 - onlinePlayers.length} jogadores` : canStart ? "Todo mundo pronto — podem começar!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, onlinePlayers.length ? readyCount / onlinePlayers.length * 100 : 8)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? "✓ Estou pronto" : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar →"}</button>}</div></section>;
+  return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>A turma está chegando</h3><p>Compartilhe o código, escolha seu avatar e marque “Estou pronto”. Os papéis e a palavra serão sorteados com segurança no servidor.</p></div><div className="lobby-setup-grid"><AvatarPicker name="lobby-avatar" value={selectedAvatarId} onChange={onSelectAvatar} compact /><div className="settings-card"><div className="settings-title"><strong>Ficha desta partida</strong><span>Escolhida pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">{selectedCategory.icon}</span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">👥</span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">⏱️</span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para conversa e suspeitas</small></div></div><span className="setting-value">Por rodada</span></div></div></div><div className="ready-box"><div><strong>{readyCount}/{onlinePlayers.length} online prontos</strong><span>{onlinePlayers.length < 3 ? `Faltam ${3 - onlinePlayers.length} jogadores` : canStart ? "Todo mundo pronto — podem começar!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, onlinePlayers.length ? readyCount / onlinePlayers.length * 100 : 8)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? "✓ Estou pronto" : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar →"}</button>}</div></section>;
 }
 
 function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snapshot: Snapshot; selectedVote: string | null; isHost: boolean; advancePhase: () => void; busy: boolean }) {
@@ -1108,9 +1198,9 @@ function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snaps
     <div className="result-confetti" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div>
     <div className="results-hero"><div className="results-heading"><span className="micro-label">Resultado da Rodada {snapshot.roundNumber}</span><h3 id="results-title">{groupWon ? "A turma venceu!" : "O impostor escapou!"}</h3><p>Os votos decidiram — a verdade veio à tona.</p></div><div className={`result-burst ${groupWon ? "caught" : "escaped"}`} aria-hidden="true"><PhaseIcon name={groupWon ? "trophy" : "alert"} size={36} /></div></div>
     <div className="results-columns">
-      <section className="results-panel impostor-panel"><span className="panel-kicker"><PhaseIcon name="alert" size={14} /> {plural ? "Impostores" : "Impostor"}</span><div className="impostor-list">{impostors.length ? impostors.map((player) => <div className="impostor-person" key={player.id}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><div><strong>{player.nickname}</strong><small>identidade revelada</small></div></div>) : <strong>Identidade indisponível</strong>}</div><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div></section>
-      <section className="results-panel votes-panel"><span className="panel-kicker"><PhaseIcon name="vote" size={14} /> Votação</span><div className="vote-totals">{voteSummary.map((player) => <div className="vote-total-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}</strong><b>{snapshot.eliminatedPlayerIds.includes(player.id) ? "faixa mais votada" : "voto registrado"}</b></div>)}</div><small className="results-note">{eliminated.length ? `${eliminated.map((player) => player.nickname).join(" e ")} ficou${eliminated.length > 1 ? "ram" : ""} na faixa mais votada. A contagem individual permanece privada.` : "Sem eliminação nesta votação. A contagem individual permanece privada."}</small></section>
-      <section className="results-panel score-panel"><span className="panel-kicker"><PhaseIcon name="trophy" size={14} /> Pontuação</span><div className="score-list">{ranking.map((player) => <div className="score-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><span><b>+{roundPoints(player)}</b><small>{player.score} total</small></span></div>)}</div><small className="results-note">Impostor vencedor +3 • equipe vencedora +2 • voto correto em impostor +1</small></section>
+      <section className="results-panel impostor-panel"><span className="panel-kicker"><PhaseIcon name="alert" size={14} /> {plural ? "Impostores" : "Impostor"}</span><div className="impostor-list">{impostors.length ? impostors.map((player) => <div className="impostor-person" key={player.id}><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><div><strong>{player.nickname}</strong><small>identidade revelada</small></div></div>) : <strong>Identidade indisponível</strong>}</div><div className="secret-reveal"><small>A palavra secreta era</small><strong>{snapshot.revealedWord ?? "—"}</strong></div></section>
+      <section className="results-panel votes-panel"><span className="panel-kicker"><PhaseIcon name="vote" size={14} /> Votação</span><div className="vote-totals">{voteSummary.map((player) => <div className="vote-total-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}</strong><b>{snapshot.eliminatedPlayerIds.includes(player.id) ? "faixa mais votada" : "voto registrado"}</b></div>)}</div><small className="results-note">{eliminated.length ? `${eliminated.map((player) => player.nickname).join(" e ")} ficou${eliminated.length > 1 ? "ram" : ""} na faixa mais votada. A contagem individual permanece privada.` : "Sem eliminação nesta votação. A contagem individual permanece privada."}</small></section>
+      <section className="results-panel score-panel"><span className="panel-kicker"><PhaseIcon name="trophy" size={14} /> Pontuação</span><div className="score-list">{ranking.map((player) => <div className="score-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><span><b>+{roundPoints(player)}</b><small>{player.score} total</small></span></div>)}</div><small className="results-note">Impostor vencedor +3 • equipe vencedora +2 • voto correto em impostor +1</small></section>
     </div>
     <div className="points-note">{groupWon ? "A turma encontrou todos os impostores." : "O impostor ainda está entre vocês — ninguém está seguro."}</div>
     {isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Próxima rodada <span aria-hidden="true">→</span></button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}
@@ -1128,8 +1218,24 @@ function RulesModal({ onClose }: { onClose: () => void }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja seu segredo.</b><span>Os jogadores recebem a palavra; os impostores recebem o assunto e uma dica ampla.</span></li><li><b>Conversem livremente.</b><span>Façam perguntas, deem pistas e organizem a discussão pelo chat sem escrever a palavra.</span></li><li><b>Decidam e votem.</b><span>O grupo escolhe mais tempo de chat ou vai direto apontar o impostor.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Os papéis são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
 }
 
-function Avatar({ playerId, name, rosterPlayerIds }: { playerId: string; name: string; rosterPlayerIds: string[] }) {
-  const profile = getCharacterProfile(playerId, rosterPlayerIds);
+function AvatarPicker({ name, value, onChange, compact = false }: { name: string; value: string; onChange: (avatarId: string) => void; compact?: boolean }) {
+  const descriptionId = `${name}-description`;
+  return <fieldset className={`avatar-picker ${compact ? "avatar-picker-compact" : "avatar-picker-entry"}`} aria-describedby={descriptionId}>
+    <legend>Escolha seu avatar</legend>
+    <p id={descriptionId}>{compact ? "Você pode trocar antes da rodada começar." : "Esse será seu rosto no chat e na votação."}</p>
+    <div className="avatar-options">
+      {characterProfiles.map((profile) => <label className="avatar-choice" style={{ "--avatar-choice-accent": profile.accent } as CSSProperties} key={profile.id}>
+        <input type="radio" name={name} value={profile.id} checked={value === profile.id} onChange={() => onChange(profile.id)} />
+        <span className="avatar-choice-portrait" style={{ backgroundImage: `url("${profile.src}")` }} aria-hidden="true" />
+        <strong>{profile.name}</strong>
+        <span className="avatar-choice-check" aria-hidden="true">✓</span>
+      </label>)}
+    </div>
+  </fieldset>;
+}
+
+function Avatar({ playerId, name, avatarId, rosterPlayerIds }: { playerId: string; name: string; avatarId?: string; rosterPlayerIds: string[] }) {
+  const profile = getCharacterProfile(playerId, rosterPlayerIds, avatarId);
   return <span className="avatar" style={{ "--avatar-accent": profile.accent } as CSSProperties} aria-hidden="true"><span className="avatar-fallback">{name.slice(0, 1).toUpperCase()}</span><span className="avatar-portrait" style={{ backgroundImage: `url("${profile.src}")` }} /></span>;
 }
 

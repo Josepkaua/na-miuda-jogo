@@ -98,6 +98,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .entry-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 20px; padding: 4px; border: 1px solid var(--border-subtle); border-radius: 13px; background: var(--surface-1); }
 .entry-tabs button { min-height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 900; cursor: pointer; }
 .entry-tabs button.active { background: var(--surface-3); color: var(--text-primary); box-shadow: inset 0 -2px var(--color-primary); }
+.avatar-picker { min-width: 0; margin: 16px 0 0; padding: 13px; border: 1px solid var(--border-subtle); border-radius: 15px; background: rgba(255,255,255,.025); }
+.avatar-picker legend { padding: 0 4px; color: var(--text-primary); font-size: 11px; font-weight: 900; }
+.avatar-picker > p { margin: 3px 0 10px; color: var(--text-muted); font-size: 10px; line-height: 1.35; }
+.avatar-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.avatar-choice { --avatar-choice-accent: var(--color-primary); position: relative; display: grid; min-width: 0; min-height: 70px; padding: 7px 4px 6px; place-items: center; align-content: center; gap: 4px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-1); color: var(--text-secondary); cursor: pointer; transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
+.avatar-choice input { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.avatar-choice-portrait { width: 43px; height: 43px; border: 2px solid color-mix(in srgb, var(--avatar-choice-accent) 68%, white); border-radius: 50%; background-color: color-mix(in srgb, var(--avatar-choice-accent) 24%, var(--surface-2)); background-position: center 18%; background-repeat: no-repeat; background-size: cover; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.avatar-choice strong { max-width: 100%; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.avatar-choice-check { position: absolute; top: 5px; right: 5px; display: grid; width: 17px; height: 17px; place-items: center; border-radius: 50%; background: var(--avatar-choice-accent); color: #07101f; font-size: 10px; font-weight: 950; opacity: 0; transform: scale(.7); transition: opacity .18s ease, transform .18s ease; }
+.avatar-choice:has(input:checked) { border-color: color-mix(in srgb, var(--avatar-choice-accent) 76%, white); background: color-mix(in srgb, var(--avatar-choice-accent) 13%, var(--surface-1)); box-shadow: 0 0 16px color-mix(in srgb, var(--avatar-choice-accent) 18%, transparent); color: var(--text-primary); }
+.avatar-choice:has(input:checked) .avatar-choice-check { opacity: 1; transform: scale(1); }
+.avatar-choice:has(input:focus-visible) { outline: 3px solid color-mix(in srgb, var(--avatar-choice-accent) 72%, white); outline-offset: 2px; }
+@media (hover: hover) { .avatar-choice:hover { border-color: color-mix(in srgb, var(--avatar-choice-accent) 52%, white); background: color-mix(in srgb, var(--avatar-choice-accent) 8%, var(--surface-1)); } }
 .field-label { display: block; margin: 0 0 7px; color: var(--text-secondary); font-size: 10px; font-weight: 900; }
 .text-input, .code-input, .wide-select, .quick-settings select { width: 100%; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-1); color: var(--text-primary); outline: none; }
 .text-input, .code-input, .wide-select { padding: 13px 14px; }
