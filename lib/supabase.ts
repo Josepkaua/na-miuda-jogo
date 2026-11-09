@@ -4,10 +4,10 @@ let browserClient: SupabaseClient | null = null;
 
 const projectUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  "https://apofjwlobwphbelgqond.supabase.co";
+  "https://rosopvadrnadslohrjef.supabase.co";
 const publishableKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  "sb_publishable_taWdDhQ06HpHzIka6mtbUg_YKaMGhmK";
+  "sb_publishable_ZEPohJMoyRbVdY2ryjOUbQ_ppDx3txU";
 
 export function hasRemoteBackend() {
   return Boolean(projectUrl && publishableKey);
