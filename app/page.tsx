@@ -665,7 +665,7 @@ export default function Home() {
       setRoleInfo({ role: meIsImpostor ? "impostor" : "player", word: meIsImpostor ? null : "Coxinha", category: "comidas", hint: meIsImpostor ? "É algo associado a lanches, festas e momentos descontraídos." : null, roomId: snapshot.roomId, roundNumber: snapshot.roundNumber + 1 });
       setRoleVisible(false);
       setRevealMotion("idle");
-      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
+      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length - 1, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
       return;
     }
     setRoleInfo(null); setRoleVisible(false); setRevealMotion("idle"); setSelectedVote(null); await callAction("start_round");
@@ -759,6 +759,7 @@ export default function Home() {
       revealTimer.current = null;
       setRoleVisible(true);
       setRevealMotion("revealed");
+      if (snapshot.phase === "reveal" && demoMode) setSnapshot((current) => current ? { ...current, rolesSeenCount: current.roundPlayerCount } : current);
       if (snapshot.phase === "reveal" && !demoMode) {
         void callAction("acknowledge_role", { p_expected_round: snapshot.roundNumber });
       }
@@ -946,7 +947,7 @@ export default function Home() {
                     </button>
                   </div>
                   <p className="seen-progress">{snapshot.rolesSeenCount}/{snapshot.roundPlayerCount} viram o papel</p>
-                  {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
+                  {isHost ? <button className="primary-button phase-action" disabled={busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
                 </section>
               )}
               {snapshot.phase === "discussion" && <DiscussionSide snapshot={snapshot} secondsLeft={secondsLeft} currentRoleInfo={currentRoleInfo} roleCategoryLabel={roleCategory.label} roleVisible={roleVisible} onToggleRole={() => setRoleVisible((value) => !value)} isHost={isHost} busy={busy} onOpenDecision={openDiscussionDecision} onOpenVoting={advancePhase} />}
