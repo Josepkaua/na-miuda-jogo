@@ -201,7 +201,6 @@ export default function InteractionSafety() {
         aria-describedby="leave-confirm-description"
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <span className="leave-confirm-icon" aria-hidden="true">↗</span>
         <small>Antes de sair</small>
         <h2 id="leave-confirm-title">Sair desta sala?</h2>
         <p id="leave-confirm-description">Você será removido da partida atual e precisará entrar novamente com o código da sala.</p>

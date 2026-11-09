@@ -53,7 +53,7 @@ export default function ConnectionStatus() {
       role="status"
       aria-live="assertive"
     >
-      <span aria-hidden="true">{online ? "✓" : "↻"}</span>
+      <span aria-hidden="true">{online ? "✓" : ""}</span>
       <div>
         <strong>{online ? "Conexão restabelecida" : "Você está sem internet"}</strong>
         <small>{online ? "A partida volta a sincronizar normalmente." : "Tentando reconectar. Não feche a sala."}</small>

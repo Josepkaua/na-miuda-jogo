@@ -6,11 +6,10 @@
   border-radius: 13px;
   background: color-mix(in srgb, var(--lime) 7%, var(--paper));
   color: color-mix(in srgb, var(--ink) 82%, var(--muted));
-  font-size: 11px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   font-weight: 800;
   text-align: center;
-  box-shadow: 0 8px 20px rgba(6, 44, 50, .05);
   animation: automatic-status-in .28s cubic-bezier(.2,.8,.24,1) both;
 }
 
@@ -32,7 +31,7 @@
   .automatic-mechanics-status {
     margin-top: 10px;
     padding: 9px 11px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
   }
 }
 

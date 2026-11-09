@@ -19,8 +19,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3f5ff" },
-    { media: "(prefers-color-scheme: dark)", color: "#060817" },
+    { media: "(prefers-color-scheme: light)", color: "#0f4c4a" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a3a39" },
   ],
 };
 
@@ -75,6 +75,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" />
+      </head>
       <body>
         {children}
         <ConnectionStatus />

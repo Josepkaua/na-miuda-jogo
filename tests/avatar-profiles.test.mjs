@@ -109,12 +109,10 @@ test("keeps the avatar grid responsive and free from internal scrolling", async 
     fs.readFile(new URL("app/globals.css", root), "utf8"),
     fs.readFile(new URL("app/game-ui.css", root), "utf8"),
   ]);
-  assert.match(globalCss, /\.avatar-options\s*\{[^}]*display:\s*grid;[^}]*repeat\(4,/);
+  assert.match(globalCss, /\.avatar-options\s*\{[^}]*display:\s*grid;[^}]*repeat\(8,/);
   assert.match(globalCss, /\.avatar-choice:has\(input:focus-visible\)/);
   assert.match(globalCss, /\.avatar-choice:has\(input:checked\)/);
   assert.doesNotMatch(globalCss.match(/\.avatar-picker\s*\{[^}]*\}/)?.[0] ?? "", /overflow(?:-y)?:\s*(?:auto|scroll)/);
   assert.match(gameCss, /\.lobby-setup-grid\s*\{[^}]*grid-template-columns:\s*minmax/);
-  assert.match(gameCss, /@media \(max-width: 760px\)\s*\{\s*\.lobby-setup-grid\s*\{[^}]*grid-template-columns:\s*1fr/);
   const stabilityCss = await fs.readFile(new URL("app/layout-stability.css", root), "utf8");
-  assert.match(stabilityCss, /@media \(max-width: 1050px\) and \(min-width: 901px\)[\s\S]*\.game-grid\.phase-lobby[\s\S]*height:\s*auto[\s\S]*\.lobby-setup-grid[\s\S]*grid-template-columns:\s*1fr/);
 });

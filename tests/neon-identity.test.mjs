@@ -11,18 +11,18 @@ test("loads the new identity as the final gameplay layer", async () => {
 
   assert.ok(interactionIndex >= 0);
   assert.ok(identityIndex > interactionIndex);
-  assert.match(layout, /#f3f5ff/);
-  assert.match(layout, /#060817/);
+  assert.match(layout, /#0f4c4a/);
+  assert.match(layout, /#0a3a39/);
 });
 
-test("uses the approved violet cyan coral amber and green palette", async () => {
+test("uses the approved boteco palette", async () => {
   const css = await read("app/globals.css");
 
-  assert.match(css, /--color-primary:\s*#8b5cf6/i);
-  assert.match(css, /--color-investigation:\s*#00d4ff/i);
-  assert.match(css, /--color-success:\s*#00e676/i);
-  assert.match(css, /--color-warning:\s*#ffb800/i);
-  assert.match(css, /--color-danger:\s*#ff4d6d/i);
+  assert.match(css, /--color-primary:\s*#f2b632/i);
+  assert.match(css, /--color-investigation:\s*#0f6b66/i);
+  assert.match(css, /--color-success:\s*#2f9e6b/i);
+  assert.match(css, /--color-warning:\s*#e58a1f/i);
+  assert.match(css, /--color-danger:\s*#f0566a/i);
 });
 
 test("replaces generic phase symbols with five consistent masked icons", async () => {
@@ -57,7 +57,7 @@ test("uses consistent functional icons for decisions and results", async () => {
 
   assert.match(icons, /\.decision-options button/);
   assert.match(icons, /\.results-content/);
-  assert.match(icons, /\.chat-message\.mine p/);
+  assert.match(icons, /\.chat-message\.mine > div/);
   assert.match(icons, /\.ui-icon/);
 });
 
@@ -67,14 +67,13 @@ test("brands installed app surfaces with the new palette", async () => {
 
   assert.match(manifest, /name:\s*"Na Miúda! — Jogo do Impostor"/);
   assert.match(manifest, /display:\s*"standalone"/);
-  assert.match(manifest, /background_color:\s*"#060817"/i);
-  assert.match(manifest, /theme_color:\s*"#060817"/i);
+  assert.match(manifest, /background_color:\s*"#0f4c4a"/i);
+  assert.match(manifest, /theme_color:\s*"#0f4c4a"/i);
   assert.match(manifest, /src:\s*"\/favicon\.svg"/);
   assert.match(manifest, /src:\s*"\/mascote-na-miuda\.png"/);
-  assert.match(favicon, /#00D4FF/i);
-  assert.match(favicon, /#6C5CE7/i);
-  assert.match(favicon, /#FF4D6D/i);
-  assert.match(favicon, /#FFB800/i);
+  assert.match(favicon, /#f2b632/i);
+  assert.match(favicon, /#12302f/i);
+  assert.match(favicon, /#0f6b66/i);
 });
 
 test("keeps motion accessibility after the redesign", async () => {

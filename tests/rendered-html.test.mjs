@@ -44,10 +44,9 @@ test("keeps the discussion chat usable on narrow screens", async () => {
     readFile(new URL("../app/layout-stability.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(baseCss, /\.app-shell\s*\{[^}]*overflow-x:\s*clip;/s);
+  assert.match(baseCss, /\.app-shell\s*\{[^}]*overflow:\s*hidden;/s);
   assert.match(css, /@media\s*\(max-width:\s*900px\)/);
   assert.match(stability, /\.game-grid\.phase-discussion\s*\{[^}]*grid-template-areas:\s*"players chat main";/s);
-  assert.match(stability, /@media\s*\(max-width:\s*900px\)[\s\S]*players-panel[\s\S]*order:\s*0[\s\S]*chat-panel[\s\S]*order:\s*1/);
   assert.doesNotMatch(css, /"art chat main"/);
   assert.match(css, /\.chat-messages\s*\{[^}]*min-height:/s);
 });
@@ -70,7 +69,7 @@ test("removes inactive players from server-side vote eligibility", async () => {
 });
 
 test("keeps discussion chat-first and reopens the collective decision after more time", async () => {
-  const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
+  const css = (await Promise.all(["game-ui", "layout-stability", "globals"].map((name) => readFile(new URL(`../app/${name}.css`, import.meta.url), "utf8")))).join(String.fromCharCode(10));
   const guard = await readFile(new URL("../app/game-phase-guard.tsx", import.meta.url), "utf8");
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");

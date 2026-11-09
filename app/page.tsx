@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefO
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseClient, hasRemoteBackend } from "../lib/supabase";
 import { characterProfiles, getCharacterProfile, getCharacterProfileById } from "../lib/character-profiles";
+import EyeMark from "./eye-mark";
 
 type ThemeMode = "system" | "light" | "dark";
 type EntryMode = "create" | "join";
@@ -12,6 +13,7 @@ type Role = "player" | "impostor";
 type DiscussionStage = "turns" | "decision" | "free_chat" | "resolved";
 type DiscussionChoice = "more_time" | "voting";
 type RevealMotion = "idle" | "scanning" | "revealed";
+type MobileView = "main" | "chat" | "players";
 
 type Player = {
   id: string;
@@ -66,21 +68,21 @@ type ChatMessage = {
   isMe: boolean;
 };
 
-type IconName = "home" | "lock" | "search" | "alert" | "eye" | "chat" | "vote" | "users" | "timer" | "copy" | "settings" | "exit" | "trophy" | "check" | "spark" | "send" | "lamp" | "scale";
+type IconName = "home" | "lock" | "search" | "alert" | "eye" | "chat" | "vote" | "users" | "timer" | "copy" | "settings" | "exit" | "trophy" | "check" | "spark" | "send" | "lamp" | "scale" | "plus" | "close" | "chevron" | "sun" | "moon" | "contrast" | "globe" | "pizza" | "flag" | "ball" | "film" | "helmet" | "paw" | "music" | "gamepad" | "phone" | "dice";
 
 const categories = [
-  { id: "paises", label: "Países", icon: "🌎", hint: "culturas e lugares do mundo" },
-  { id: "comidas", label: "Comidas", icon: "🍕", hint: "pratos, bebidas e ingredientes" },
-  { id: "brasil", label: "Brasil", icon: "🇧🇷", hint: "lugares, costumes e cultura" },
-  { id: "futebol", label: "Futebol", icon: "⚽", hint: "jogadores, clubes e estádio" },
-  { id: "filmes", label: "Filmes e séries", icon: "🎬", hint: "personagens, histórias e telas" },
-  { id: "profissoes", label: "Profissões", icon: "🧑‍🔧", hint: "trabalhos e ferramentas" },
-  { id: "animais", label: "Animais", icon: "🦜", hint: "do quintal à floresta" },
-  { id: "musica", label: "Música", icon: "🎵", hint: "artistas, ritmos e instrumentos" },
-  { id: "games", label: "Games", icon: "🎮", hint: "jogos, consoles e personagens" },
-  { id: "objetos", label: "Objetos", icon: "💡", hint: "coisas do dia a dia" },
-  { id: "internet", label: "Internet", icon: "📱", hint: "memes, apps e redes" },
-  { id: "misturado", label: "Tudo misturado", icon: "🎲", hint: "uma surpresa a cada rodada" },
+  { id: "paises", label: "Países", icon: "globe" as IconName, hint: "culturas e lugares do mundo" },
+  { id: "comidas", label: "Comidas", icon: "pizza" as IconName, hint: "pratos, bebidas e ingredientes" },
+  { id: "brasil", label: "Brasil", icon: "flag" as IconName, hint: "lugares, costumes e cultura" },
+  { id: "futebol", label: "Futebol", icon: "ball" as IconName, hint: "jogadores, clubes e estádio" },
+  { id: "filmes", label: "Filmes e séries", icon: "film" as IconName, hint: "personagens, histórias e telas" },
+  { id: "profissoes", label: "Profissões", icon: "helmet" as IconName, hint: "trabalhos e ferramentas" },
+  { id: "animais", label: "Animais", icon: "paw" as IconName, hint: "do quintal à floresta" },
+  { id: "musica", label: "Música", icon: "music" as IconName, hint: "artistas, ritmos e instrumentos" },
+  { id: "games", label: "Games", icon: "gamepad" as IconName, hint: "jogos, consoles e personagens" },
+  { id: "objetos", label: "Objetos", icon: "lamp" as IconName, hint: "coisas do dia a dia" },
+  { id: "internet", label: "Internet", icon: "phone" as IconName, hint: "memes, apps e redes" },
+  { id: "misturado", label: "Tudo misturado", icon: "dice" as IconName, hint: "uma surpresa a cada rodada" },
 ];
 
 const demoPlayers = [
@@ -209,7 +211,7 @@ function makeDemoSnapshot(nickname: string, limit: number, category: string, sec
 }
 
 export default function Home() {
-  const [theme, setTheme] = useState<ThemeMode>("system");
+  const [theme, setTheme] = useState<ThemeMode>("light");
   const [entryMode, setEntryMode] = useState<EntryMode>("create");
   const [nickname, setNickname] = useState("");
   const [selectedAvatarId, setSelectedAvatarId] = useState("nina");
@@ -237,6 +239,8 @@ export default function Home() {
   const [chatBusy, setChatBusy] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [unreadChat, setUnreadChat] = useState(0);
+  const [mobileChoice, setMobileChoice] = useState<{ key: string; view: MobileView } | null>(null);
+  const [chatSeenId, setChatSeenId] = useState(0);
   const latestSnapshotRequest = useRef(0);
   const latestRoleRequest = useRef(0);
   const latestChatRequest = useRef(0);
@@ -267,12 +271,17 @@ export default function Home() {
     : snapshot?.category ?? category;
   const selectedCategory = categories.find((item) => item.id === activeCategory) ?? categories.at(-1)!;
   const roleCategory = categories.find((item) => item.id === currentRoleInfo?.category) ?? selectedCategory;
+  const mobileKey = snapshot ? `${snapshot.phase}:${snapshot.roundNumber}` : "";
+  const mobileView: MobileView = mobileChoice?.key === mobileKey ? mobileChoice.view : snapshot?.phase === "discussion" ? "chat" : "main";
+  const latestChatId = chatMessages.at(-1)?.id ?? 0;
+  const mobileUnread = mobileView === "chat" ? 0 : chatMessages.filter((message) => !message.isMe && message.id > chatSeenId).length;
+  const mobileMainLabel = snapshot?.phase === "lobby" ? "Sala" : snapshot?.phase === "discussion" ? "Pistas" : snapshot?.phase === "voting" ? "Votar" : "Placar";
   const secondsLeft = snapshot?.phaseEndsAt && now
     ? Math.max(0, Math.ceil((new Date(snapshot.phaseEndsAt).getTime() - (now + clockOffsetMs)) / 1000))
     : null;
 
   useEffect(() => {
-    const storedTheme = (localStorage.getItem("na-miuda-theme") as ThemeMode | null) ?? "system";
+    const storedTheme = (localStorage.getItem("na-miuda-theme") as ThemeMode | null) ?? "light";
     document.documentElement.dataset.theme = storedTheme;
     const code = new URLSearchParams(window.location.search).get("sala");
     const storedName = localStorage.getItem("na-miuda-nickname");
@@ -819,6 +828,12 @@ export default function Home() {
     chatScroll.current?.scrollTo({ top: chatScroll.current.scrollHeight, behavior: "smooth" });
   }
 
+  function selectMobileView(view: MobileView) {
+    setMobileChoice({ key: mobileKey, view });
+    setChatSeenId(latestChatId);
+    if (view === "chat") window.requestAnimationFrame(jumpToLatestChat);
+  }
+
   function acceptSuggestion() {
     setImpostorCount(suggestion.impostors); setDiscussionSeconds(suggestion.seconds); setShowSuggestion(false);
     setNotice("Sugestão aplicada. Você ainda pode alterar tudo.");
@@ -850,9 +865,8 @@ export default function Home() {
 
   return (
     <main className={`app-shell ${snapshot ? `game-active game-phase-${snapshot.phase}` : "landing-active"}`}>
-      <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
-        <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><span className="brand-logo" aria-hidden="true" /><span>Na Miúda!</span></button>
+        <button className="brand" onClick={leaveRoom} aria-label="Voltar ao início"><EyeMark className="brand-logo" /><span>Na Miúda!</span></button>
         <div className="topbar-actions">
           <button className="rules-button" onClick={() => setShowRules(true)}>Como jogar</button>
           <ThemeSwitch value={theme} onChange={(value) => { setTheme(value); void updateProfile({ preferred_theme: value }); }} />
@@ -863,17 +877,18 @@ export default function Home() {
       {!snapshot ? (
         <div className="landing-wrap">
           <section className="hero-copy">
-            <div className="hero-mascot" aria-hidden="true"><span>?</span></div>
-            <span className="eyebrow"><b>●</b> Suspeita brasileira, de qualquer lugar</span>
-            <h1>Todo mundo sabe.<br /><em>Menos um.</em></h1>
-            <p>Uma palavra, muita conversa e alguém tentando parecer confiante demais. Crie a sala, mande o código e descubra quem está só improvisando.</p>
-            <div className="proof-row"><span>⚡ sala em segundos</span><span>●</span><span>💬 chat no jogo</span><span>●</span><span>📱 cada um na sua casa</span></div>
-            <div className="category-preview" aria-hidden="true"><span>🌎</span><span>🍕</span><span>⚽</span><span>🎬</span><span>🎮</span><b>assuntos para todo tipo de turma</b></div>
-            <div className="suspicion-note"><span>REGRA NÃO ESCRITA</span><strong>Fale com confiança.<br />Mesmo sem saber de nada.</strong></div>
+            <EyeMark className="hero-mascot" tracking />
+            <h1><span className="hero-line">Todo mundo sabe.</span><span className="hero-stamp">Menos um.</span></h1>
+            <p>Uma palavra, muita conversa e alguém tentando parecer confiante demais. Com chat no jogo e cada um na sua casa.</p>
+            <ol className="how-it-works">
+              <li><strong>Mande o código</strong><p>Cada pessoa entra pelo navegador, sem instalar nada.</p></li>
+              <li><strong>Proteja o segredo</strong><p>Todo mundo recebe a palavra. O impostor, só uma pista.</p></li>
+              <li><strong>Blefe e desconfie</strong><p>Conversem, comparem respostas e façam a acusação.</p></li>
+            </ol>
           </section>
 
           <section className="entry-card" aria-label="Criar ou entrar em sala">
-            <div className="entry-heading"><div><span className="micro-label">Partida particular</span><h2>{entryMode === "create" ? "Abra a investigação" : "Entre sem fazer barulho"}</h2></div><span className="browser-badge"><i /> grátis no navegador</span></div>
+            <div className="entry-heading"><h2>{entryMode === "create" ? "Abra a investigação" : "Entre sem fazer barulho"}</h2></div>
             <div className="entry-tabs" role="tablist" aria-label="Escolher como jogar"><button type="button" role="tab" aria-selected={entryMode === "create"} className={entryMode === "create" ? "active" : ""} onClick={() => setEntryMode("create")}>Criar sala</button><button type="button" role="tab" aria-selected={entryMode === "join"} className={entryMode === "join" ? "active" : ""} onClick={() => setEntryMode("join")}>Tenho um código</button></div>
             <label className="field-label" htmlFor="nickname">Seu apelido</label>
             <input id="nickname" className="text-input" value={nickname} maxLength={20} onChange={(event) => setNickname(event.target.value)} placeholder="Ex.: Kauã" autoComplete="nickname" />
@@ -887,47 +902,39 @@ export default function Home() {
               </div>
 
               <label className="field-label" htmlFor="category">Assunto da rodada</label>
-              <select id="category" className="wide-select" value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option value={item.id} key={item.id}>{item.icon} {item.label}</option>)}</select>
+              <select id="category" className="wide-select" value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select>
 
               {showSuggestion && (
                 <div className="suggestion-card">
-                  <span className="spark">✦</span><div><strong>Palpite da casa</strong><p>Com {playerLimit} pessoas, {suggestion.impostors} {suggestion.impostors === 1 ? "impostor" : "impostores"} e {suggestion.seconds / 60} min deixam a rodada {suggestion.label.toLowerCase()}.</p><div><button onClick={acceptSuggestion}>Usar esse ajuste</button><button onClick={() => setShowSuggestion(false)}>Eu decido</button></div></div>
+                  <p>Sugestão: {suggestion.impostors} {suggestion.impostors === 1 ? "impostor" : "impostores"} e {suggestion.seconds / 60} min para {playerLimit} pessoas.</p><div><button onClick={acceptSuggestion}>Usar</button><button onClick={() => setShowSuggestion(false)}>Eu decido</button></div>
                 </div>
               )}
 
-              <button className="primary-button" disabled={busy} onClick={createRoom}><span>＋</span> {busy ? "Preparando o caso..." : "Criar sala e chamar a turma"}</button>
+              <button className="primary-button create-room" disabled={busy} onClick={createRoom}>{busy ? "Preparando o caso..." : "Criar sala e chamar a turma"}</button>
             </> : <div className="join-case">
               <label className="field-label" htmlFor="room-code">Código da sala</label>
-              <div className="join-row"><input id="room-code" className="code-input" value={joinCode} maxLength={6} onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, ""))} placeholder="EX.: A7B9K2" aria-label="Código da sala" autoComplete="off" /><button className="secondary-button" disabled={busy} onClick={joinRoom}>{busy ? "Entrando..." : "Entrar →"}</button></div>
+              <div className="join-row"><input id="room-code" className="code-input" value={joinCode} maxLength={6} onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, ""))} placeholder="EX.: A7B9K2" aria-label="Código da sala" autoComplete="off" /><button className="secondary-button" disabled={busy} onClick={joinRoom}>{busy ? "Entrando..." : "Entrar"}</button></div>
               <p>O código tem 6 caracteres e foi enviado por quem criou a sala.</p>
             </div>}
 
-            <details className="profile-save"><summary><span>G</span><div><strong>Guardar meu apelido</strong><small>Opcional • salvar com Gmail</small></div><i>⌄</i></summary><div className="profile-save-row"><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="seunome@gmail.com" aria-label="Seu Gmail" /><button disabled={busy} onClick={saveProfileByEmail}>{busy ? "Enviando..." : "Salvar"}</button></div></details>
+            <details className="profile-save"><summary>Guardar meu apelido com Gmail (opcional)<PhaseIcon name="chevron" size={16} /></summary><div className="profile-save-row"><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="seunome@gmail.com" aria-label="Seu Gmail" /><button disabled={busy} onClick={saveProfileByEmail}>{busy ? "Enviando..." : "Salvar"}</button></div></details>
             {error && <p className="form-message error" role="alert">{error}</p>}{notice && <p className="form-message success" role="status">{notice}</p>}
             {!remoteEnabled && <p className="demo-note">A versão aberta agora usa jogadores simulados para você testar uma rodada completa.</p>}
-          </section>
-
-          <section className="how-it-works">
-            <div><span>01</span><strong>Mande o código</strong><p>Cada pessoa entra pelo navegador, sem instalar nada.</p></div>
-            <div><span>02</span><strong>Proteja o segredo</strong><p>Todo mundo recebe a palavra. O impostor recebe só uma pista.</p></div>
-            <div><span>03</span><strong>Blefe e desconfie</strong><p>Conversem no chat, comparem respostas e façam a acusação.</p></div>
           </section>
         </div>
       ) : (
         <div className={`game-wrap ${snapshot.phase === "discussion" ? "discussion-mode" : ""}`}>
           <section className="game-hud panel" aria-label="Status da partida">
             <div className="hud-room">
-              <section className="room-header panel"><div className="room-heading"><span className="room-live"><i /> sala aberta</span><div><span className="micro-label">{phaseLabels[snapshot.phase]}</span><h2>{snapshot.phase === "lobby" ? "Junte a turma" : `Rodada ${snapshot.roundNumber}`}</h2></div></div><div className="room-code-block"><span>Código da sala</span><strong>{snapshot.code}</strong><button onClick={copyInvite}><PhaseIcon name="copy" size={15} /> <span>Copiar</span></button></div></section>
+              <section className="room-header panel"><div className="room-heading"><div><span className="micro-label">{phaseLabels[snapshot.phase]}</span><h2>{snapshot.phase === "lobby" ? "Junte a turma" : `Rodada ${snapshot.roundNumber}`}</h2></div></div><div className="room-code-block"><span>Código da sala</span><strong>{snapshot.code}</strong><button onClick={copyInvite}><PhaseIcon name="copy" size={15} /> <span>Copiar</span></button></div></section>
               <PhaseRail phase={snapshot.phase} />
             </div>
           </section>
-          <div className={`game-grid phase-${snapshot.phase} ${snapshot.phase === "discussion" ? "chat-focus" : ""}`}>
+          <div className={`game-grid phase-${snapshot.phase} mobile-view-${snapshot.phase === "reveal" ? "main" : mobileView} ${snapshot.phase === "discussion" ? "chat-focus" : ""}`}>
             <section className="main-panel panel">
               {snapshot.phase === "lobby" && <Lobby snapshot={snapshot} me={me} readyCount={readyCount} selectedCategory={selectedCategory} selectedAvatarId={selectedAvatarId} onSelectAvatar={selectAvatar} toggleReady={toggleReady} startRound={startRound} busy={busy} />}
               {snapshot.phase === "reveal" && (
                 <section className={`phase-content centered-phase reveal-screen reveal-${revealMotion}`} aria-labelledby="reveal-title">
-                  <div className={`phase-icon reveal-phase-icon ${revealMotion}`}><PhaseIcon name={revealMotion === "scanning" ? "search" : roleVisible ? currentRoleInfo?.role === "impostor" ? "alert" : "lock" : "eye"} size={34} /></div>
-                  <span className="micro-label">{revealMotion === "scanning" ? "Conexão protegida" : roleVisible ? "Segredo confirmado" : "Só você pode ver"}</span>
                   <h3 id="reveal-title">{revealMotion === "scanning" ? "Decodificando seu papel…" : roleVisible ? currentRoleInfo?.role === "impostor" ? "Você é o impostor" : "Sua palavra é" : "Descubra seu papel"}</h3>
                   <p className="reveal-subtitle">{revealMotion === "scanning" ? "A sala está conferindo a distribuição. Não feche esta tela." : roleVisible ? currentRoleInfo?.role === "impostor" ? "Agora pareça pertencer à conversa." : "Guarde a resposta. Dê pistas sem entregá-la." : "Toque no cartão quando estiver sozinho para revelar."}</p>
                   <div className={`role-reveal-stage ${revealMotion} ${currentRoleInfo?.role === "impostor" ? "role-is-impostor" : "role-is-player"}`} aria-live="polite">
@@ -935,11 +942,11 @@ export default function Home() {
                     <div className="reveal-orbit reveal-orbit-two" aria-hidden="true" />
                     <span className="reveal-scan-line" aria-hidden="true" />
                     <button className={`role-card ${roleVisible ? "revealed" : ""} ${revealMotion === "scanning" ? "scanning" : ""}`} disabled={!currentRoleInfo || busy || revealMotion === "scanning"} onClick={toggleRoleCard}>
-                      {revealMotion === "scanning" ? <><span className="role-card-mark"><PhaseIcon name="search" size={26} /></span><strong>Decodificando…</strong><small>Conferindo seu papel com a sala</small><span className="role-scan-progress" aria-hidden="true"><i /></span></> : !roleVisible ? <><span className="role-card-mark"><PhaseIcon name="lock" size={26} /></span><strong>{currentRoleInfo ? "Toque para revelar" : "Sorteando seu papel..."}</strong><small>Proteja a tela dos curiosos</small><span className="role-card-hint">A revelação leva menos de um segundo</span></> : currentRoleInfo?.role === "impostor" ? <><span className="role-card-mark danger"><PhaseIcon name="alert" size={26} /></span><strong>IMPOSTOR</strong><small>Categoria: {roleCategory.label}. Escute as pistas e disfarce.</small>{currentRoleInfo.hint && <span className="role-hint"><b>Dica secreta</b>{currentRoleInfo.hint}</span>}</> : <><span className="role-card-mark cyan"><PhaseIcon name="lock" size={26} /></span><strong>{currentRoleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}
+                      {revealMotion === "scanning" ? <><span className="role-card-mark"><EyeMark /></span><strong>Decodificando…</strong><small>Conferindo seu papel com a sala</small><span className="role-scan-progress" aria-hidden="true"><i /></span></> : !roleVisible ? <><span className="role-card-mark"><EyeMark /></span><strong>{currentRoleInfo ? "Toque para revelar" : "Sorteando seu papel..."}</strong><small>Proteja a tela dos curiosos</small></> : currentRoleInfo?.role === "impostor" ? <><span className="role-card-mark danger"><PhaseIcon name="alert" size={26} /></span><strong>IMPOSTOR</strong><small>Categoria: {roleCategory.label}. Escute as pistas e disfarce.</small>{currentRoleInfo.hint && <span className="role-hint"><b>Dica secreta</b>{currentRoleInfo.hint}</span>}</> : <><span className="role-card-mark cyan"><PhaseIcon name="lock" size={26} /></span><strong>{currentRoleInfo?.word ?? "Carregando..."}</strong><small>Dê uma pista boa, mas não entregue a palavra.</small></>}
                     </button>
                   </div>
                   <p className="seen-progress">{snapshot.rolesSeenCount}/{snapshot.roundPlayerCount} viram o papel</p>
-                  {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas →</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
+                  {isHost ? <button className="primary-button phase-action" disabled={!roleVisible || busy || snapshot.rolesSeenCount < snapshot.roundPlayerCount} onClick={advancePhase}>Todos viram? Começar pistas</button> : <p className="waiting-copy">Quando todos estiverem prontos, o anfitrião inicia as pistas.</p>}
                 </section>
               )}
               {snapshot.phase === "discussion" && <DiscussionSide snapshot={snapshot} secondsLeft={secondsLeft} currentRoleInfo={currentRoleInfo} roleCategoryLabel={roleCategory.label} roleVisible={roleVisible} onToggleRole={() => setRoleVisible((value) => !value)} isHost={isHost} busy={busy} onOpenDecision={openDiscussionDecision} onOpenVoting={advancePhase} />}
@@ -947,7 +954,7 @@ export default function Home() {
               {snapshot.phase === "results" && <Results snapshot={snapshot} selectedVote={selectedVote} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
             </section>
 
-            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><span>{selectedCategory.icon}</span><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
+            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing"><div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><PhaseIcon name={selectedCategory.icon} size={22} /><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
             <ChatPanel
               snapshot={snapshot}
               messages={chatMessages}
@@ -965,12 +972,14 @@ export default function Home() {
               onDiscussionChoice={castDiscussionChoice}
             />
           </div>
-          {(error || notice) && <div className={`toast ${error ? "error" : "success"}`} role={error ? "alert" : "status"} aria-live="polite">{error || notice}<button aria-label="Fechar aviso" onClick={() => { setError(""); setNotice(""); }}>×</button></div>}
+          {snapshot.phase !== "reveal" && <nav className="mobile-tabs" aria-label="Áreas da partida">
+            {([["main", mobileMainLabel, "search"], ["chat", "Chat", "chat"], ["players", "Turma", "users"]] as Array<[MobileView, string, IconName]>).map(([view, label, icon]) => <button type="button" key={view} className={mobileView === view ? "active" : ""} aria-current={mobileView === view ? "page" : undefined} onClick={() => selectMobileView(view)}><PhaseIcon name={icon} size={20} />{label}{view === "chat" && mobileUnread > 0 && <b>{mobileUnread}</b>}</button>)}
+          </nav>}
+          {(error || notice) && <div className={`toast ${error ? "error" : "success"}`} role={error ? "alert" : "status"} aria-live="polite">{error || notice}<button aria-label="Fechar aviso" onClick={() => { setError(""); setNotice(""); }}><PhaseIcon name="close" size={18} /></button></div>}
         </div>
       )}
 
       {showRules && <RulesModal onClose={closeRules} />}
-      <footer><span>Na Miúda! • uma brincadeira entre amigos</span><span>Chat da sala integrado para jogar de qualquer lugar.</span></footer>
     </main>
   );
 }
@@ -979,7 +988,7 @@ function PhaseRail({ phase }: { phase: Phase }) {
   const activeIndex = phaseSteps.findIndex((step) => step.id === phase);
   return <nav className="phase-rail panel" aria-label="Etapas da rodada">
     {phaseSteps.map((step, index) => <div className={`phase-step ${index < activeIndex ? "complete" : ""} ${index === activeIndex ? "active" : ""}`} aria-current={index === activeIndex ? "step" : undefined} key={step.id}>
-      <span aria-hidden="true"><PhaseIcon name={index < activeIndex ? "check" : step.icon} /></span><div><small>0{index + 1}</small><strong>{step.short}</strong></div>
+      <span aria-hidden="true"><PhaseIcon name={index < activeIndex ? "check" : step.icon} /></span><strong>{step.short}</strong>
     </div>)}
   </nav>;
 }
@@ -1004,12 +1013,29 @@ function PhaseIcon({ name, size = 20 }: { name: IconName; size?: number }) {
     send: "m21 3-7.2 18-3.1-7.7L3 10.2 21 3Zm0 0L10.7 13.3",
     lamp: "M9 19h6m-5 3h4M8 15.5a7 7 0 1 1 8 0c-.7.5-1 1.1-1 2.5H9c0-1.4-.3-2-1-2.5Z",
     scale: "M12 4v16m-7 0h14M5 7h14M5 7l-3 6h6L5 7Zm14 0-3 6h6l-3-6Z",
+    plus: "M12 5v14M5 12h14",
+    close: "M6 6l12 12M18 6 6 18",
+    chevron: "m6 9 6 6 6-6",
+    sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v2m0 14v2M3 12h2m14 0h2M5.600 5.600 7 7m10 10 1.400 1.400M5.600 18.400 7 17M17 7l1.400-1.400",
+    moon: "M20 14.500A8.500 8.500 0 0 1 9.500 4 8.500 8.500 0 1 0 20 14.500Z",
+    contrast: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 0v18",
+    globe: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c3.500 3 3.500 15 0 18M12 3c-3.500 3-3.500 15 0 18",
+    pizza: "M4 6c5-3 11-3 16 0L12 21 4 6Zm5 3.500h.01m5.500 1h.01M11.500 14.500h.01",
+    flag: "M12 3 22 12 12 21 2 12 12 3Zm0 5.500a3.500 3.500 0 1 0 0 7 3.500 3.500 0 0 0 0-7Z",
+    ball: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5 4 3-1.500 4.500h-5L8 11l4-3Zm0-5v5m4 3 4.500-1.500m-6 6 2.500 4m-5.500-4-2.500 4M8 11 3.500 9.500",
+    film: "M4 10h16v10H4V10Zm-.800-.200-1-3.800L17 2.200l1 3.800L3.200 9.800Zm5.300-1.400L7.200 4.300m6.300 2.800-1.300-4.100",
+    helmet: "M3 17h18M5 17v-2a7 7 0 0 1 14 0v2M10 8.300V13m4-4.700V13",
+    paw: "M12 13c-3 0-5.500 3-5.500 5.200 0 1.800 1.600 2.300 3 1.900 1.700-.5 3.300-.5 5 0 1.400.4 3-.1 3-1.900 0-2.200-2.500-5.200-5.500-5.200ZM5.500 10v1.500M9.500 5.500V7M14.500 5.500V7M18.500 10v1.500",
+    music: "M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm11-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+    gamepad: "M7 8h10a5 5 0 0 1 4.900 6l-.5 2.500a2.500 2.500 0 0 1-4.400 1L15 16H9l-2 1.500a2.500 2.500 0 0 1-4.400-1L2.100 14A5 5 0 0 1 7 8Zm0 3v3m-1.500-1.500h3M16 11.500h.01M18 13.500h.01",
+    phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm4 16h.01",
+    dice: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm3 5h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01",
   };
   return <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }
 
 function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: ThemeMode) => void }) {
-  const options: Array<{ value: ThemeMode; label: string; icon: string }> = [{ value: "system", label: "Sistema", icon: "◐" }, { value: "light", label: "Claro", icon: "☀" }, { value: "dark", label: "Escuro", icon: "☾" }];
+  const options: Array<{ value: ThemeMode; label: string; icon: IconName }> = [{ value: "system", label: "Sistema", icon: "contrast" }, { value: "light", label: "Claro", icon: "sun" }, { value: "dark", label: "Escuro", icon: "moon" }];
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const current = Math.max(0, options.findIndex((item) => item.value === value));
@@ -1023,8 +1049,8 @@ function ThemeSwitch({ value, onChange }: { value: ThemeMode; onChange: (value: 
     return () => { window.removeEventListener("pointerdown", closeOutside); window.removeEventListener("keydown", closeWithEscape); };
   }, [open]);
   return <div className="theme-switch" ref={root}>
-    <button className="theme-trigger" type="button" title={`Tema: ${selected.label}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((currentOpen) => !currentOpen)}><span aria-hidden="true">{selected.icon}</span><strong>{selected.label}</strong><i aria-hidden="true">⌄</i></button>
-    {open && <div className="theme-menu" role="menu" aria-label="Escolher tema">{options.map((option) => <button type="button" role="menuitemradio" aria-checked={option.value === value} className={option.value === value ? "active" : ""} key={option.value} onClick={() => { onChange(option.value); setOpen(false); }}><span aria-hidden="true">{option.icon}</span><strong>{option.label}</strong><i aria-hidden="true">{option.value === value ? "✓" : ""}</i></button>)}</div>}
+    <button className="theme-trigger" type="button" title={`Tema: ${selected.label}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((currentOpen) => !currentOpen)}><PhaseIcon name={selected.icon} size={18} /><strong>{selected.label}</strong><span className="chevron"><PhaseIcon name="chevron" size={14} /></span></button>
+    {open && <div className="theme-menu" role="menu" aria-label="Escolher tema">{options.map((option) => <button type="button" role="menuitemradio" aria-checked={option.value === value} className={option.value === value ? "active" : ""} key={option.value} onClick={() => { onChange(option.value); setOpen(false); }}><PhaseIcon name={option.icon} size={18} /><strong>{option.label}</strong>{option.value === value ? <PhaseIcon name="check" size={16} /> : <span />}</button>)}</div>}
   </div>;
 }
 
@@ -1045,7 +1071,7 @@ function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLa
     || (snapshot.discussionStage === "free_chat" || snapshot.discussionStage === "turns") && snapshot.discussionVoteCount === 0 && secondsLeft === 0;
   return <section className="phase-content centered-phase discussion-side">
     <div className="discussion-brief">
-      {deciding ? <div className="phase-icon decision-icon"><PhaseIcon name="scale" size={34} /></div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
+      {deciding ? <div className="phase-icon decision-icon"><PhaseIcon name="scale" size={34} /></div> : <div className={`timer-ring ${secondsLeft === 0 ? "expired" : ""}`} style={{ "--timer-progress": Math.min(1, (secondsLeft ?? 1e9) / (extraTime ? 60 : snapshot.discussionSeconds)) } as CSSProperties}><strong>{formatTime(secondsLeft ?? (extraTime ? 60 : snapshot.discussionSeconds))}</strong><span>{extraTime ? "tempo extra" : "para conversar"}</span></div>}
       <span className="micro-label">{deciding ? "Decisão da turma" : extraTime ? "Tempo extra" : "Discussão aberta"}</span>
       <h3>{deciding ? "Votem no chat" : "Conversem livremente"}</h3>
       <p className="phase-description">{deciding ? "O chat fica pausado por alguns segundos enquanto todos escolhem o próximo passo." : extraTime ? "Usem este minuto para comparar respostas e encontrar contradições." : "Façam perguntas, deem pistas e organizem a conversa do jeito que funcionar melhor para a turma."}</p>
@@ -1053,8 +1079,8 @@ function DiscussionSide({ snapshot, secondsLeft, currentRoleInfo, roleCategoryLa
     <div className={`tip-box ${currentRoleInfo?.role === "impostor" ? "impostor-tip" : ""}`}><span><PhaseIcon name={currentRoleInfo?.role === "impostor" ? "alert" : "lamp"} size={22} /></span><p><strong>{currentRoleInfo?.role === "impostor" ? "Sua dica de blefe" : "Dica rápida"}</strong>{currentRoleInfo?.role === "impostor" ? currentRoleInfo.hint ?? "Escute as palavras que mais se repetem e responda de forma ampla." : "Uma boa pergunta testa quem conhece a palavra sem entregá-la ao impostor."}</p></div>
     <div className="secret-recheck"><button className="ghost-button" disabled={!currentRoleInfo} onClick={onToggleRole}>{roleVisible ? "Ocultar meu segredo" : "Rever meu segredo"}</button>{roleVisible && currentRoleInfo && <div><small>{currentRoleInfo.role === "impostor" ? `Impostor • ${roleCategoryLabel}` : "Sua palavra"}</small><strong>{currentRoleInfo.role === "impostor" ? "IMPOSTOR" : currentRoleInfo.word}</strong>{currentRoleInfo.role === "impostor" && currentRoleInfo.hint && <p>{currentRoleInfo.hint}</p>}</div>}</div>
     {!deciding && (extraTime
-      ? isHost ? <button className="primary-button phase-action" disabled={busy} onClick={onOpenVoting}>Encerrar conversa e votar →</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>
-      : isHost && <button className="ghost-button discussion-decision-trigger" disabled={busy} onClick={onOpenDecision}>Encerrar conversa e decidir →</button>)}
+      ? isHost ? <button className="primary-button phase-action" disabled={busy} onClick={onOpenVoting}>Encerrar conversa e votar</button> : <p className="waiting-copy">O anfitrião abre a votação quando o grupo terminar.</p>
+      : isHost && <button className="ghost-button discussion-decision-trigger" disabled={busy} onClick={onOpenDecision}>Encerrar conversa e decidir</button>)}
   </section>;
 }
 
@@ -1115,7 +1141,7 @@ function ChatPanel({
       <div className="chat-heading-status">{phase === "discussion" && !deciding && secondsLeft !== null && <span className="chat-timer-pill">{formatTime(secondsLeft)}</span>}<span className="chat-live"><i /> ao vivo</span></div>
     </div>
     <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span><PhaseIcon name={paused ? "lock" : "chat"} size={15} /></span>{phaseHint}</div>
-    {phase === "discussion" && snapshot.discussionMoreTimeCount > 0 && !deciding && <div className="extra-time-banner"><span>＋1:00</span><div><strong>Tempo extra liberado</strong><small>O chat voltou — comparem as respostas.</small></div></div>}
+    {phase === "discussion" && snapshot.discussionMoreTimeCount > 0 && !deciding && <div className="extra-time-banner"><span>+1:00</span><div><strong>Tempo extra liberado</strong><small>O chat voltou — comparem as respostas.</small></div></div>}
     {deciding ? <div className="discussion-decision" role="group" aria-labelledby="discussion-question">
       <div className="decision-symbol" aria-hidden="true"><PhaseIcon name="scale" size={24} /></div>
       <span className="micro-label">Todo mundo escolhe</span>
@@ -1128,12 +1154,12 @@ function ChatPanel({
       <div className="decision-progress"><span><b>{snapshot.discussionVoteCount}</b> de {snapshot.eligibleVoterCount} votaram</span><div><i style={{ width: `${voteProgress}%` }} /></div></div>
       {snapshot.hasDiscussionVoted && <small className="decision-waiting">Seu voto foi contado. Aguardando a turma…</small>}
     </div> : <div className="chat-messages" ref={listRef} onScroll={onScroll} aria-live="polite" aria-relevant="additions">
-      {loading && messages.length === 0 ? <div className="chat-empty"><span>•••</span><strong>Abrindo a conversa...</strong></div> : messages.length === 0 ? <div className="chat-empty"><span>🕵️</span><strong>O silêncio já está suspeito</strong><p>Quebre o gelo antes que alguém pareça culpado demais.</p></div> : messages.map((message) => <div className={`chat-message ${message.isMe ? "mine" : ""}`} key={message.id}>
+      {loading && messages.length === 0 ? <div className="chat-empty"><span>•••</span><strong>Abrindo a conversa...</strong></div> : messages.length === 0 ? <div className="chat-empty"><EyeMark /><strong>O silêncio já está suspeito</strong><p>Quebre o gelo antes que alguém pareça culpado demais.</p></div> : messages.map((message) => <div className={`chat-message ${message.isMe ? "mine" : ""}`} key={message.id}>
         {!message.isMe && <Avatar playerId={message.playerId} name={message.nickname} avatarId={playersById.get(message.playerId)?.avatarId} rosterPlayerIds={rosterPlayerIds} />}
         <div><span><strong>{message.isMe ? "Você" : message.nickname}</strong><time dateTime={message.createdAt}>{formatChatTime(message.createdAt)}</time></span><p>{message.body}</p></div>
       </div>)}
     </div>}
-    {!deciding && unread > 0 && <button className="new-messages-button" type="button" onClick={onJumpToLatest}>{unread} {unread === 1 ? "mensagem nova" : "mensagens novas"} ↓</button>}
+    {!deciding && unread > 0 && <button className="new-messages-button" type="button" onClick={onJumpToLatest}>{unread} {unread === 1 ? "mensagem nova" : "mensagens novas"}</button>}
     <form className="chat-composer" onSubmit={(event) => { event.preventDefault(); onSend(); }}>
       <input
         value={draft}
@@ -1176,7 +1202,7 @@ function VotingScreen({ snapshot, selectedVote, secondsLeft, busy, isHost, onSel
 function Lobby({ snapshot, me, readyCount, selectedCategory, selectedAvatarId, onSelectAvatar, toggleReady, startRound, busy }: { snapshot: Snapshot; me?: Player; readyCount: number; selectedCategory: (typeof categories)[number]; selectedAvatarId: string; onSelectAvatar: (avatarId: string) => void; toggleReady: () => void; startRound: () => void; busy: boolean }) {
   const onlinePlayers = snapshot.players.filter((player) => player.isOnline);
   const canStart = onlinePlayers.length >= 3 && readyCount === onlinePlayers.length;
-  return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>A turma está chegando</h3><p>Compartilhe o código, escolha seu avatar e marque “Estou pronto”. Os papéis e a palavra serão sorteados com segurança no servidor.</p></div><div className="lobby-setup-grid"><AvatarPicker name="lobby-avatar" value={selectedAvatarId} onChange={onSelectAvatar} compact /><div className="settings-card"><div className="settings-title"><strong>Ficha desta partida</strong><span>Escolhida pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">{selectedCategory.icon}</span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">👥</span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon">⏱️</span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para conversa e suspeitas</small></div></div><span className="setting-value">Por rodada</span></div></div></div><div className="ready-box"><div><strong>{readyCount}/{onlinePlayers.length} online prontos</strong><span>{onlinePlayers.length < 3 ? `Faltam ${3 - onlinePlayers.length} jogadores` : canStart ? "Todo mundo pronto — podem começar!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, onlinePlayers.length ? readyCount / onlinePlayers.length * 100 : 8)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? "✓ Estou pronto" : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar →"}</button>}</div></section>;
+  return <section className="phase-content lobby-content"><div className="lobby-intro"><span className="micro-label">Antes de começar</span><h3>A turma está chegando</h3><p>Compartilhe o código, escolha seu avatar e marque “Estou pronto”. Os papéis e a palavra serão sorteados com segurança no servidor.</p></div><div className="lobby-setup-grid"><AvatarPicker name="lobby-avatar" value={selectedAvatarId} onChange={onSelectAvatar} compact /><div className="settings-card"><div className="settings-title"><strong>Ficha desta partida</strong><span>Escolhida pelo anfitrião</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon"><PhaseIcon name={selectedCategory.icon} size={22} /></span><div><strong>{selectedCategory.label}</strong><small>{selectedCategory.hint}</small></div></div><span className="setting-value">Assunto</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon"><PhaseIcon name="users" size={22} /></span><div><strong>Até {snapshot.playerLimit} jogadores</strong><small>{snapshot.impostorCount} impostor{snapshot.impostorCount > 1 ? "es" : ""}</small></div></div><span className="setting-value">Equilibrado</span></div><div className="setting-row"><div className="setting-copy"><span className="setting-icon"><PhaseIcon name="timer" size={22} /></span><div><strong>{snapshot.discussionSeconds / 60} minutos</strong><small>para conversa e suspeitas</small></div></div><span className="setting-value">Por rodada</span></div></div></div><div className="ready-box"><div><strong>{readyCount}/{onlinePlayers.length} online prontos</strong><span>{onlinePlayers.length < 3 ? `Faltam ${3 - onlinePlayers.length} jogadores` : canStart ? "Todo mundo pronto — podem começar!" : "Aguardando a turma"}</span></div><div className="ready-bar"><i style={{ width: `${Math.max(8, onlinePlayers.length ? readyCount / onlinePlayers.length * 100 : 8)}%` }} /></div></div><div className="lobby-actions"><button className={me?.isReady ? "ready-button active" : "ready-button"} onClick={toggleReady}>{me?.isReady ? <><PhaseIcon name="check" size={18} /> Estou pronto</> : "Marcar como pronto"}</button>{me?.isHost && <button className="primary-button" disabled={!canStart || busy} onClick={startRound}>{busy ? "Sorteando..." : "Sortear e começar"}</button>}</div></section>;
 }
 
 function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snapshot: Snapshot; selectedVote: string | null; isHost: boolean; advancePhase: () => void; busy: boolean }) {
@@ -1203,7 +1229,7 @@ function Results({ snapshot, selectedVote, isHost, advancePhase, busy }: { snaps
       <section className="results-panel score-panel"><span className="panel-kicker"><PhaseIcon name="trophy" size={14} /> Pontuação</span><div className="score-list">{ranking.map((player) => <div className="score-row" key={player.id}><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><strong>{player.nickname}{player.isMe ? " (você)" : ""}</strong><span><b>+{roundPoints(player)}</b><small>{player.score} total</small></span></div>)}</div><small className="results-note">Impostor vencedor +3 • equipe vencedora +2 • voto correto em impostor +1</small></section>
     </div>
     <div className="points-note">{groupWon ? "A turma encontrou todos os impostores." : "O impostor ainda está entre vocês — ninguém está seguro."}</div>
-    {isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Próxima rodada <span aria-hidden="true">→</span></button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}
+    {isHost ? <button className="primary-button phase-action" disabled={busy} onClick={advancePhase}>Próxima rodada</button> : <p className="waiting-copy">O anfitrião está preparando a próxima rodada.</p>}
   </section>;
 }
 
@@ -1215,7 +1241,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}>×</button><span className="micro-label">Regras rápidas</span><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja seu segredo.</b><span>Os jogadores recebem a palavra; os impostores recebem o assunto e uma dica ampla.</span></li><li><b>Conversem livremente.</b><span>Façam perguntas, deem pistas e organizem a discussão pelo chat sem escrever a palavra.</span></li><li><b>Decidam e votem.</b><span>O grupo escolhe mais tempo de chat ou vai direto apontar o impostor.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Os papéis são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}><PhaseIcon name="close" size={20} /></button><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja seu segredo.</b><span>Os jogadores recebem a palavra; os impostores recebem o assunto e uma dica ampla.</span></li><li><b>Conversem livremente.</b><span>Façam perguntas, deem pistas e organizem a discussão pelo chat sem escrever a palavra.</span></li><li><b>Decidam e votem.</b><span>O grupo escolhe mais tempo de chat ou vai direto apontar o impostor.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Os papéis são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
 }
 
 function AvatarPicker({ name, value, onChange, compact = false }: { name: string; value: string; onChange: (avatarId: string) => void; compact?: boolean }) {

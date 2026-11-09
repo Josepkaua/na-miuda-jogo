@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import EyeMark from "./eye-mark";
 
 type CinematicKind = "neutral" | "vote" | "group" | "impostor" | "role-player" | "role-impostor";
 type CinematicState = {
   kind: CinematicKind;
-  icon: string;
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -142,7 +142,6 @@ export default function GamePhaseGuard() {
           if (revealedRole === "impostor") {
             showCinematic({
               kind: "role-impostor",
-              icon: "!",
               eyebrow: "Papel secreto",
               title: "VOCÊ É O IMPOSTOR",
               subtitle: "Observe, improvise e não deixe a equipe perceber.",
@@ -150,7 +149,6 @@ export default function GamePhaseGuard() {
           } else {
             showCinematic({
               kind: "role-player",
-              icon: "✦",
               eyebrow: "Papel secreto",
               title: "PALAVRA LIBERADA",
               subtitle: "Dê pistas úteis sem entregar a resposta.",
@@ -170,7 +168,6 @@ export default function GamePhaseGuard() {
         if (previous.phase === "lobby" && current.phase === "reveal") {
           showCinematic({
             kind: "neutral",
-            icon: "◈",
             eyebrow: "Nova rodada",
             title: "PAPÉIS SORTEADOS",
             subtitle: "Proteja sua tela. Seu segredo está chegando.",
@@ -178,7 +175,6 @@ export default function GamePhaseGuard() {
         } else if (previous.phase === "reveal" && current.phase === "discussion") {
           showCinematic({
             kind: "neutral",
-            icon: "⌁",
             eyebrow: "Investigação aberta",
             title: "PISTAS LIBERADAS",
             subtitle: "Converse, observe contradições e encontre quem está improvisando.",
@@ -187,7 +183,6 @@ export default function GamePhaseGuard() {
           setTransitionMessage("");
           showCinematic({
             kind: "vote",
-            icon: "⚑",
             eyebrow: "Sem volta",
             title: "HORA DE ACUSAR",
             subtitle: "Escolha quem você acredita que está blefando.",
@@ -197,7 +192,6 @@ export default function GamePhaseGuard() {
           if (resultOutcome === "group") {
             showCinematic({
               kind: "group",
-              icon: "✓",
               eyebrow: "Investigação concluída",
               title: "A EQUIPE VENCEU",
               subtitle: "O disfarce caiu. O impostor foi descoberto.",
@@ -205,7 +199,6 @@ export default function GamePhaseGuard() {
           } else {
             showCinematic({
               kind: "impostor",
-              icon: "!",
               eyebrow: "Blefe perfeito",
               title: "O IMPOSTOR VENCEU",
               subtitle: "A suspeita passou longe. O impostor escapou.",
@@ -265,7 +258,7 @@ export default function GamePhaseGuard() {
           </div>
           <div className="cinematic-card">
             <span className="cinematic-scanline" aria-hidden="true" />
-            <span className="cinematic-icon" aria-hidden="true"><i>{cinematic.icon}</i></span>
+            <EyeMark className="cinematic-eye" />
             <small className="cinematic-eyebrow">{cinematic.eyebrow}</small>
             <strong>{cinematic.title}</strong>
             <span className="cinematic-divider" aria-hidden="true"><i /></span>
@@ -276,7 +269,6 @@ export default function GamePhaseGuard() {
       )}
       {transitionMessage && (
         <div className="phase-transition-toast" role="status" aria-live="polite">
-          <span aria-hidden="true">⏱</span>
           <strong>{transitionMessage}</strong>
         </div>
       )}

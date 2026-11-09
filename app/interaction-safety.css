@@ -5,54 +5,37 @@
   display: grid;
   place-items: center;
   padding: 22px;
-  background: rgba(2, 20, 24, .72);
-  backdrop-filter: blur(12px);
+  background: rgba(7, 43, 42, .75);
   animation: leave-backdrop-in .18s ease-out both;
 }
 
 .leave-confirm-dialog {
   width: min(430px, 100%);
   padding: 26px;
-  border: 1px solid color-mix(in srgb, var(--lime) 30%, var(--line));
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--paper) 97%, transparent);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, .34);
+  border: 2px solid var(--stroke);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-panel);
   text-align: center;
   animation: leave-dialog-in .28s cubic-bezier(.16,.9,.24,1.08) both;
 }
 
-.leave-confirm-icon {
-  width: 54px;
-  height: 54px;
-  display: grid;
-  place-items: center;
-  margin: 0 auto 12px;
-  border-radius: 18px;
-  background: color-mix(in srgb, #ffb25e 15%, var(--paper));
-  border: 1px solid color-mix(in srgb, #ffb25e 40%, var(--line));
-  font-size: 25px;
-  transform: rotate(-4deg);
-}
-
 .leave-confirm-dialog > small {
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  font-size: 9px;
-  font-weight: 900;
+  font-size: var(--fs-sm);
+  font-weight: 700;
 }
 
 .leave-confirm-dialog h2 {
   margin: 7px 0 9px;
-  font-size: 27px;
-  letter-spacing: -.045em;
+  font-size: var(--fs-xl);
 }
 
 .leave-confirm-dialog p {
   margin: 0 auto;
   max-width: 340px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -72,8 +55,8 @@
 
 .room-code-block button[data-copy-feedback="true"] {
   min-width: 84px;
-  background: color-mix(in srgb, var(--lime) 85%, white);
-  transform: translateY(-1px);
+  background: var(--lime);
+  color: var(--on-primary);
 }
 
 @keyframes leave-backdrop-in {
@@ -88,7 +71,7 @@
 
 @media (max-width: 520px) {
   .leave-confirm-backdrop { padding: 14px; }
-  .leave-confirm-dialog { padding: 22px 18px; border-radius: 21px; }
+  .leave-confirm-dialog { padding: 22px 18px; border-radius: var(--radius-lg); }
   .leave-confirm-dialog > div { grid-template-columns: 1fr; }
 }
 

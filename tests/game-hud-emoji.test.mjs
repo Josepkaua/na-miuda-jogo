@@ -7,9 +7,8 @@ test("keeps the in-game HUD compact, unified and animated", async () => {
   const css = await readFile(new URL("../app/game-ui.css", import.meta.url), "utf8");
 
   assert.match(layout, /game-ui\.css/);
-  assert.match(css, /\.game-hud\s*\{/);
+  assert.match(css, /\.game-hud\.panel\s*\{/);
   assert.match(css, /\.room-header\.panel, \.phase-rail\.panel/);
-  assert.match(css, /calc\(100dvh - 180px\)/);
   assert.match(css, /@keyframes nm-score-pop/);
   assert.match(css, /@keyframes nm-row-flash/);
   assert.match(css, /\.chat-message/);
