@@ -51,6 +51,8 @@ type Snapshot = {
   discussionGoVotingCount: number;
   hasDiscussionVoted: boolean;
   discussionVoteChoice: DiscussionChoice | null;
+  discussionSkipCount: number;
+  hasSkipVoted: boolean;
   revealedWord: string | null;
   eliminatedPlayerIds: string[];
   impostorPlayerIds: string[];
@@ -158,6 +160,8 @@ function normalizeSnapshot(value: Record<string, unknown>): Snapshot {
     discussionGoVotingCount: Number(value.discussion_go_voting_count ?? 0),
     hasDiscussionVoted: Boolean(value.has_discussion_voted),
     discussionVoteChoice: value.discussion_vote_choice === "more_time" || value.discussion_vote_choice === "voting" ? value.discussion_vote_choice : null,
+    discussionSkipCount: Number(value.discussion_skip_count ?? 0),
+    hasSkipVoted: Boolean(value.has_skip_voted),
     revealedWord: value.revealed_word ? String(value.revealed_word) : null,
     eliminatedPlayerIds: Array.isArray(value.eliminated_player_ids) ? value.eliminated_player_ids.map(String) : [],
     impostorPlayerIds: Array.isArray(value.impostor_player_ids) ? value.impostor_player_ids.map(String) : [],
@@ -206,7 +210,7 @@ function makeDemoSnapshot(nickname: string, limit: number, category: string, sec
     roomId: "demo-room", code: "JOGAR", phase: "lobby", category,
     playerLimit: limit, impostorCount: Math.min(impostors, Math.max(1, total - 2)),
     discussionSeconds: seconds, roundNumber: 0, phaseEndsAt: null, serverNow: null, voteCount: 0, hasVoted: false, eligibleVoterCount: players.length, rolesSeenCount: 0, roundPlayerCount: players.length,
-    discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null,
+    discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null, discussionSkipCount: 0, hasSkipVoted: false,
     revealedWord: null, eliminatedPlayerIds: [], impostorPlayerIds: [], winner: null, players,
   };
 }
@@ -243,6 +247,7 @@ export default function Home() {
   const [mobileChoice, setMobileChoice] = useState<{ key: string; view: MobileView } | null>(null);
   const [chatSeenId, setChatSeenId] = useState(0);
   const [voice, setVoice] = useState<VoiceState>(emptyVoiceState);
+  const [kickTarget, setKickTarget] = useState<string | null>(null);
   const latestSnapshotRequest = useRef(0);
   const latestRoleRequest = useRef(0);
   const latestChatRequest = useRef(0);
@@ -265,6 +270,7 @@ export default function Home() {
   const onlineCount = snapshot?.players.filter((player) => player.isOnline).length ?? 0;
   const leaderScore = Math.max(0, ...(snapshot?.players.map((player) => player.score) ?? [0]));
   const rosterPlayerIds = snapshot?.players.map((player) => player.id) ?? [];
+  const rankedPlayers = [...(snapshot?.players ?? [])].sort((a, b) => b.score - a.score);
   const roomCode = snapshot?.code;
   const suggestion = recommendationFor(playerLimit);
   const maxImpostors = Math.max(1, Math.min(5, Math.floor((playerLimit - 1) / 3)));
@@ -363,7 +369,7 @@ export default function Home() {
         setChatDraft("");
         setUnreadChat(0);
         window.history.replaceState({}, "", window.location.pathname);
-        setError("Você ficou offline por mais de 75 segundos e saiu da sala. Entre novamente com o mesmo código.");
+        setError("Você saiu da sala: ficou offline por muito tempo ou o anfitrião tirou você. Entre de novo com o mesmo código.");
         return;
       }
       if (!silent) setError(rpcError.message);
@@ -667,7 +673,7 @@ export default function Home() {
       setRoleInfo({ role: meIsImpostor ? "impostor" : "player", word: meIsImpostor ? null : "Coxinha", category: "comidas", hint: meIsImpostor ? "É algo associado a lanches, festas e momentos descontraídos." : null, roomId: snapshot.roomId, roundNumber: snapshot.roundNumber + 1 });
       setRoleVisible(false);
       setRevealMotion("idle");
-      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length - 1, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null });
+      setSnapshot({ ...snapshot, phase: "reveal", roundNumber: snapshot.roundNumber + 1, impostorPlayerIds: impostors, revealedWord: null, eliminatedPlayerIds: [], winner: null, voteCount: 0, hasVoted: false, rolesSeenCount: snapshot.players.length - 1, roundPlayerCount: snapshot.players.length, discussionStage: "free_chat", discussionTurnOrder: null, discussionTurnPlayerId: null, discussionVoteCount: 0, discussionMoreTimeCount: 0, discussionGoVotingCount: 0, hasDiscussionVoted: false, discussionVoteChoice: null, discussionSkipCount: 0, hasSkipVoted: false });
       return;
     }
     setRoleInfo(null); setRoleVisible(false); setRevealMotion("idle"); setSelectedVote(null); await callAction("start_round");
@@ -676,7 +682,7 @@ export default function Home() {
   async function advancePhase() {
     if (!snapshot) return;
     if (demoMode) {
-      if (snapshot.phase === "reveal") setSnapshot({ ...snapshot, phase: "discussion", phaseEndsAt: new Date(Date.now() + snapshot.discussionSeconds * 1000).toISOString() });
+      if (snapshot.phase === "reveal") setSnapshot({ ...snapshot, phase: "discussion", phaseEndsAt: isoFromNow(snapshot.discussionSeconds * 1000) });
       else if (snapshot.phase === "discussion") setSnapshot({ ...snapshot, phase: "voting", phaseEndsAt: null });
       else if (snapshot.phase === "voting") {
         const eliminated = roleInfo?.role === "impostor" ? [me?.id ?? "me"] : [selectedVote ?? snapshot.players[1].id];
@@ -723,13 +729,42 @@ export default function Home() {
     if (demoMode) {
       const majority = Math.floor(snapshot.eligibleVoterCount / 2) + 1;
       if (choice === "more_time") {
-        setSnapshot({ ...snapshot, discussionStage: "free_chat", discussionVoteCount: majority, discussionMoreTimeCount: majority, hasDiscussionVoted: true, discussionVoteChoice: choice, phaseEndsAt: new Date(Date.now() + 60_000).toISOString() });
+        setSnapshot({ ...snapshot, discussionStage: "free_chat", discussionVoteCount: majority, discussionMoreTimeCount: majority, hasDiscussionVoted: true, discussionVoteChoice: choice, phaseEndsAt: isoFromNow(60_000) });
       } else {
-        setSnapshot({ ...snapshot, phase: "voting", discussionStage: "resolved", discussionVoteCount: majority, discussionGoVotingCount: majority, hasDiscussionVoted: true, discussionVoteChoice: choice, phaseEndsAt: new Date(Date.now() + 90_000).toISOString() });
+        setSnapshot({ ...snapshot, phase: "voting", discussionStage: "resolved", discussionVoteCount: majority, discussionGoVotingCount: majority, hasDiscussionVoted: true, discussionVoteChoice: choice, phaseEndsAt: isoFromNow(90_000) });
       }
       return;
     }
     await callAction("cast_discussion_choice", { p_choice: choice, p_expected_round: snapshot.roundNumber });
+  }
+
+  async function toggleSkipVote() {
+    if (!snapshot || snapshot.phase !== "discussion" || !["turns", "free_chat"].includes(snapshot.discussionStage)) return;
+    const wantsSkip = !snapshot.hasSkipVoted;
+    if (demoMode) {
+      const count = Math.max(0, snapshot.discussionSkipCount + (wantsSkip ? 1 : -1));
+      const majority = Math.floor(snapshot.eligibleVoterCount / 2) + 1;
+      if (wantsSkip && count + majority - 1 >= majority) {
+        setSnapshot({ ...snapshot, phase: "voting", discussionStage: "resolved", discussionSkipCount: 0, hasSkipVoted: false, phaseEndsAt: isoFromNow(90_000) });
+      } else {
+        setSnapshot({ ...snapshot, discussionSkipCount: count, hasSkipVoted: wantsSkip });
+      }
+      return;
+    }
+    await callAction("vote_skip_discussion", { p_skip: wantsSkip, p_expected_round: snapshot.roundNumber });
+  }
+
+  async function kickPlayer(playerId: string) {
+    if (!snapshot || !isHost) return;
+    const target = snapshot.players.find((player) => player.id === playerId);
+    if (!target || target.isMe) return;
+    if (demoMode) {
+      setSnapshot({ ...snapshot, players: snapshot.players.filter((player) => player.id !== playerId) });
+      setNotice(`${target.nickname} saiu da sala. Pode voltar com o código.`);
+      return;
+    }
+    const succeeded = await callAction("kick_player", { p_player_id: playerId });
+    if (succeeded) setNotice(`${target.nickname} saiu da sala. Pode voltar com o código quando a rodada acabar.`);
   }
 
   async function openDiscussionDecision() {
@@ -958,7 +993,7 @@ export default function Home() {
               {snapshot.phase === "results" && <Results snapshot={snapshot} selectedVote={selectedVote} isHost={isHost} advancePhase={advancePhase} busy={busy} />}
             </section>
 
-            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{snapshot.players.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""} ${snapshot.phase === "lobby" && player.isOnline && player.isReady ? "ready" : ""} ${voice.speaking.includes(player.id) ? "speaking" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing">{voice.members.includes(player.id) && <span className={`voice-badge ${voice.muted.includes(player.id) ? "muted" : ""}`} title={voice.muted.includes(player.id) ? "Na voz, com microfone desligado" : "Na voz"}><PhaseIcon name={voice.muted.includes(player.id) ? "micOff" : "mic"} size={14} /></span>}<div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b></div></div>; })}</div><div className="category-chip"><PhaseIcon name={selectedCategory.icon} size={22} /><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
+            <aside className="players-panel panel"><div className="players-heading"><div><span className="micro-label">Na sala • placar</span><h3>Jogadores</h3></div><span>{onlineCount}/{snapshot.players.length} online</span></div><div className="player-list">{rankedPlayers.map((player, index) => { const isLeader = leaderScore > 0 && player.score === leaderScore; return <div className={`player-row ${isLeader ? "leader" : ""} ${snapshot.phase === "lobby" && player.isOnline && player.isReady ? "ready" : ""} ${voice.speaking.includes(player.id) ? "speaking" : ""}`} key={player.id}><div className="player-order">{index + 1}</div><Avatar playerId={player.id} name={player.nickname} avatarId={player.avatarId} rosterPlayerIds={rosterPlayerIds} /><div className="player-name"><strong>{isLeader && <span className="leader-crown" aria-label="Líder">♛</span>}{player.nickname}{player.isMe ? " (você)" : ""}</strong><small>{!player.isOnline ? "Desconectado" : player.isHost ? "Anfitrião" : snapshot.phase === "lobby" ? player.isReady ? "Pronto para jogar" : "Se preparando" : phaseLabels[snapshot.phase]}</small></div><div className="player-trailing">{voice.members.includes(player.id) && <span className={`voice-badge ${voice.muted.includes(player.id) ? "muted" : ""}`} title={voice.muted.includes(player.id) ? "Na voz, com microfone desligado" : "Na voz"}><PhaseIcon name={voice.muted.includes(player.id) ? "micOff" : "mic"} size={14} /></span>}<div className={`status-dot ${player.isOnline ? "online" : ""}`} title={player.isOnline ? "Online" : "Desconectado"} /><b className="player-score" key={`${player.id}-${player.score}`} aria-label={`${player.score} ${player.score === 1 ? "ponto" : "pontos"}`}>{player.score}<small>pt</small></b>{isHost && !player.isMe && <button type="button" className={`kick-button ${kickTarget === player.id ? "confirming" : ""}`} disabled={busy} aria-label={kickTarget === player.id ? `Confirmar: tirar ${player.nickname} da sala` : `Tirar ${player.nickname} da sala`} onClick={() => { if (kickTarget === player.id) { setKickTarget(null); void kickPlayer(player.id); } else setKickTarget(player.id); }} onBlur={() => setKickTarget((current) => current === player.id ? null : current)}>{kickTarget === player.id ? "Tirar?" : <PhaseIcon name="exit" size={15} />}</button>}</div></div>; })}</div><div className="category-chip"><PhaseIcon name={selectedCategory.icon} size={22} /><div><small>Categoria</small><strong>{selectedCategory.label}</strong></div></div><div className="room-mini-stats"><span><b>{snapshot.playerLimit}</b> vagas</span><span><b>{snapshot.impostorCount}</b> impostor{snapshot.impostorCount > 1 ? "es" : ""}</span><span><b>{snapshot.discussionSeconds / 60}</b> min</span></div></aside>
             <ChatPanel
               snapshot={snapshot}
               messages={chatMessages}
@@ -974,6 +1009,7 @@ export default function Home() {
               onJumpToLatest={jumpToLatestChat}
               secondsLeft={secondsLeft}
               onDiscussionChoice={castDiscussionChoice}
+              onSkipVote={toggleSkipVote}
             />
           </div>
           {snapshot.phase !== "reveal" && <nav className="mobile-tabs" aria-label="Áreas da partida">
@@ -1122,6 +1158,7 @@ function ChatPanel({
   onScroll,
   onJumpToLatest,
   onDiscussionChoice,
+  onSkipVote,
 }: {
   snapshot: Snapshot;
   messages: ChatMessage[];
@@ -1137,6 +1174,7 @@ function ChatPanel({
   onScroll: () => void;
   onJumpToLatest: () => void;
   onDiscussionChoice: (choice: DiscussionChoice) => void;
+  onSkipVote: () => void;
 }) {
   const phase = snapshot.phase;
   const rosterPlayerIds = snapshot.players.map((player) => player.id);
@@ -1164,6 +1202,10 @@ function ChatPanel({
       <div className="chat-heading-status">{phase === "discussion" && !deciding && secondsLeft !== null && <span className="chat-timer-pill">{formatTime(secondsLeft)}</span>}<span className="chat-live"><i /> ao vivo</span></div>
     </div>
     <div className={`chat-phase-note ${paused ? "paused" : ""}`}><span><PhaseIcon name={paused ? "lock" : "chat"} size={15} /></span>{phaseHint}</div>
+    {phase === "discussion" && !deciding && <div className={`skip-vote ${snapshot.hasSkipVoted ? "voted" : ""}`}>
+      <div><strong>Pular para a votação?</strong><small>{snapshot.discussionSkipCount} de {snapshot.eligibleVoterCount} querem · precisa de {Math.floor(snapshot.eligibleVoterCount / 2) + 1}</small><span className="skip-meter" aria-hidden="true"><i style={{ width: `${snapshot.eligibleVoterCount ? Math.min(100, snapshot.discussionSkipCount / (Math.floor(snapshot.eligibleVoterCount / 2) + 1) * 100) : 0}%` }} /></span></div>
+      <button type="button" disabled={actionBusy} aria-pressed={snapshot.hasSkipVoted} onClick={onSkipVote}>{snapshot.hasSkipVoted ? "Cancelar" : "Quero pular"}</button>
+    </div>}
     {phase === "discussion" && snapshot.discussionMoreTimeCount > 0 && !deciding && <div className="extra-time-banner"><span>+1:00</span><div><strong>Tempo extra liberado</strong><small>O chat voltou — comparem as respostas.</small></div></div>}
     {deciding ? <div className="discussion-decision" role="group" aria-labelledby="discussion-question">
       <div className="decision-symbol" aria-hidden="true"><PhaseIcon name="scale" size={24} /></div>
@@ -1264,7 +1306,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}><PhaseIcon name="close" size={20} /></button><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja seu segredo.</b><span>Os jogadores recebem a palavra; os impostores recebem o assunto e uma dica ampla.</span></li><li><b>Conversem livremente.</b><span>Façam perguntas e deem pistas pelo chat ou pela voz da sala, sem dizer a palavra.</span></li><li><b>Decidam e votem.</b><span>O grupo escolhe mais tempo de chat ou vai direto apontar o impostor.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Os papéis são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onMouseDown={(event) => event.stopPropagation()}><button ref={closeButton} className="modal-close" aria-label="Fechar regras" onClick={onClose}><PhaseIcon name="close" size={20} /></button><h2 id="rules-title">Como jogar Na Miúda!</h2><ol><li><b>Entre na sala.</b><span>Cada pessoa usa o próprio celular ou computador.</span></li><li><b>Veja seu segredo.</b><span>Os jogadores recebem a palavra; os impostores recebem o assunto e uma dica ampla.</span></li><li><b>Conversem livremente.</b><span>Façam perguntas e deem pistas pelo chat ou pela voz da sala, sem dizer a palavra.</span></li><li><b>Decidam e votem.</b><span>Se a maioria pedir, a conversa termina antes. No fim do tempo, o grupo escolhe mais um minuto ou a votação.</span></li></ol><p>Com vários impostores, o grupo precisa colocar todos entre os mais votados. Se um inocente empatar nessa faixa, os impostores escapam. Os papéis são sorteados novamente a cada rodada.</p><button className="primary-button" onClick={onClose}>Entendi, vamos jogar</button></section></div>;
 }
 
 function AvatarPicker({ name, value, onChange, compact = false }: { name: string; value: string; onChange: (avatarId: string) => void; compact?: boolean }) {
@@ -1286,6 +1328,10 @@ function AvatarPicker({ name, value, onChange, compact = false }: { name: string
 function Avatar({ playerId, name, avatarId, rosterPlayerIds }: { playerId: string; name: string; avatarId?: string; rosterPlayerIds: string[] }) {
   const profile = getCharacterProfile(playerId, rosterPlayerIds, avatarId);
   return <span className="avatar" style={{ "--avatar-accent": profile.accent } as CSSProperties} aria-hidden="true"><span className="avatar-fallback">{name.slice(0, 1).toUpperCase()}</span><span className="avatar-portrait" style={{ backgroundImage: `url("${profile.src}")` }} /></span>;
+}
+
+function isoFromNow(milliseconds: number) {
+  return new Date(Date.now() + milliseconds).toISOString();
 }
 
 function formatTime(total: number) {
