@@ -42,6 +42,7 @@
   --fs-lg: 1.25rem;
   --fs-xl: 1.625rem;
   --fs-2xl: 2.25rem;
+  --display-stretch: 80%;
 
   /* Espaçamento em múltiplos de 4 px */
   --s-1: 4px;
@@ -128,7 +129,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   overflow: hidden;
   padding: env(safe-area-inset-top) clamp(12px, 2.5vw, 32px) max(var(--s-3), env(safe-area-inset-bottom));
   background-color: var(--bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' fill='none' stroke='%23f6efd9' stroke-opacity='.08' stroke-width='2'%3E%3Cpath d='M48 8c11 14 11 26 0 40-11-14-11-26 0-40ZM48 88c11-14 11-26 0-40-11 14-11 26 0 40ZM8 48c14-11 26-11 40 0-14 11-26 11-40 0ZM88 48c-14-11-26-11-40 0 14 11 26 11 40 0Z'/%3E%3Cpath d='M0 0h96v96H0z'/%3E%3C/svg%3E");
+  background-image: radial-gradient(ellipse 90% 70% at 28% 0%, rgba(246, 239, 217, .1), transparent 70%), radial-gradient(ellipse 80% 60% at 100% 100%, rgba(5, 31, 30, .45), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' fill='none' stroke='%23f6efd9' stroke-opacity='.08' stroke-width='2'%3E%3Cpath d='M48 8c11 14 11 26 0 40-11-14-11-26 0-40ZM48 88c11-14 11-26 0-40-11 14-11 26 0 40ZM8 48c14-11 26-11 40 0-14 11-26 11-40 0ZM88 48c-14-11-26-11-40 0 14 11 26 11 40 0Z'/%3E%3Cpath d='M0 0h96v96H0z'/%3E%3C/svg%3E");
 }
 
 .topbar { width: 100%; max-width: 1400px; min-height: 60px; margin: 0 auto; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); color: var(--on-bg); }
@@ -150,10 +151,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .landing-wrap { width: 100%; max-width: 1200px; margin: 0 auto; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(400px, 480px); gap: clamp(24px, 5vw, 80px); align-items: center; }
 .hero-copy { min-width: 0; color: var(--on-bg); }
 .hero-mascot { width: clamp(96px, 16vh, 148px); height: auto; margin-bottom: var(--s-4); }
-.hero-copy h1 { display: grid; justify-items: start; gap: var(--s-2); font-size: clamp(2.75rem, min(6vw, 10vh), 5rem); line-height: 1; }
+.hero-copy h1 { display: grid; justify-items: start; gap: var(--s-2); font-size: clamp(3rem, min(7.4vw, 12vh), 6.25rem); font-stretch: var(--display-stretch); line-height: .95; }
 .hero-line { display: block; animation: nm-line-in .6s var(--ease-standard) both; }
 .hero-stamp { display: inline-block; padding: .08em .3em .14em; border-radius: var(--radius-md); background: var(--color-danger); color: var(--on-danger); transform: rotate(-3deg); transform-origin: left center; animation: nm-stamp .5s .45s var(--ease-spring) both; }
 .hero-copy > p { max-width: 48ch; margin-top: var(--s-5); color: var(--on-bg-muted); font-size: var(--fs-lg); line-height: 1.4; }
+/* Fila de suspeitos em tampinhas: todo mundo aparece, menos um */
+.suspect-lineup { display: flex; gap: clamp(10px, 1.2vw, 16px); margin-top: var(--s-6); padding-left: 5px; }
+.suspect-cap { position: relative; width: clamp(42px, 6.4vh, 58px); aspect-ratio: 1; perspective: 400px; animation: nm-deal .45s var(--ease-spring) both; }
+.suspect-cap:nth-child(odd) { rotate: -5deg; } .suspect-cap:nth-child(even) { rotate: 4deg; }
+.suspect-cap:nth-child(1) { animation-delay: .5s; } .suspect-cap:nth-child(2) { animation-delay: .56s; } .suspect-cap:nth-child(3) { animation-delay: .62s; } .suspect-cap:nth-child(4) { animation-delay: .68s; } .suspect-cap:nth-child(5) { animation-delay: .74s; } .suspect-cap:nth-child(6) { animation-delay: .8s; } .suspect-cap:nth-child(7) { animation-delay: .86s; } .suspect-cap:nth-child(8) { animation-delay: .92s; }
+.suspect-cap::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; background: repeating-conic-gradient(var(--stroke) 0 9deg, transparent 0 18deg); }
+.suspect-flip { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .6s var(--ease-spring); }
+.suspect-cap.flipped .suspect-flip { transform: rotateY(180deg); }
+.suspect-face, .suspect-back { position: absolute; inset: 0; border: 2px solid var(--stroke); border-radius: 50%; backface-visibility: hidden; }
+.suspect-face { background-color: var(--avatar-accent); background-position: center 18%; background-size: cover; }
+.suspect-back { display: grid; place-items: center; background: var(--color-danger); color: var(--on-danger); font-size: 1.5rem; font-weight: 800; transform: rotateY(180deg); }
+
 .how-it-works { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); margin: var(--s-6) 0 0; padding: var(--s-5) 0 0; border-top: 2px solid rgba(246, 239, 217, .2); list-style: none; }
 .how-it-works strong { display: block; font-size: var(--fs-md); font-weight: 800; }
 .how-it-works p { margin-top: var(--s-1); color: var(--on-bg-muted); font-size: var(--fs-sm); line-height: 1.35; }
@@ -241,8 +254,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .landing-wrap { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--s-3); align-items: stretch; }
   .hero-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--s-3); }
   .hero-mascot { width: 56px; margin: 0; }
-  .hero-copy h1 { gap: var(--s-1); font-size: clamp(1.5rem, 7vw, 2.25rem); }
-  .hero-copy > p, .how-it-works { display: none; }
+  .hero-copy h1 { gap: var(--s-1); font-size: clamp(1.75rem, 8.4vw, 2.75rem); }
+  .hero-copy > p, .how-it-works, .suspect-lineup { display: none; }
   .entry-card { max-height: none; min-height: 0; width: 100%; max-width: 560px; margin: 0 auto var(--s-1); padding: var(--s-4); }
   .primary-button.create-room { position: sticky; bottom: 0; z-index: 2; }
 }
@@ -263,4 +276,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .entry-card { padding: var(--s-4); }
   .hero-copy > p { font-size: var(--fs-md); margin-top: var(--s-3); }
   .how-it-works { margin-top: var(--s-3); padding-top: var(--s-3); }
+  .suspect-lineup { margin-top: var(--s-4); }
+  .hero-mascot { width: clamp(72px, 13vh, 110px); margin-bottom: var(--s-3); }
 }
